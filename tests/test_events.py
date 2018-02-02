@@ -2,7 +2,10 @@
 
 import mock
 
-from courseware import module_render as render
+from courseware.module_render import (
+    get_module_system_for_user,
+    make_track_function,
+)
 from courseware.tests.factories import StaffFactory
 from django.http.request import HttpRequest
 from student.tests.factories import AdminFactory
@@ -19,7 +22,7 @@ class TestEvents(ModuleStoreTestCase):
 
     def setUp(self):
         super(TestEvents, self).setUp()
-        self.track_function = render.make_track_function(HttpRequest())
+        self.track_function = make_track_function(HttpRequest())
         self.course = CourseFactory.create(
             org='foo', number='bar', display_name='baz',
         )
@@ -45,7 +48,7 @@ class TestEvents(ModuleStoreTestCase):
         """
         Make a runtime
         """
-        runtime, _ = render.get_module_system_for_user(
+        runtime, _ = get_module_system_for_user(
             user=self.instructor,
             student_data=self.student_data,
             descriptor=self.descriptor,
