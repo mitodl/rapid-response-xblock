@@ -1,4 +1,4 @@
-"""Setup for rapid-response-datastore XBlock."""
+"""Setup for rapid-response XBlock."""
 
 from setuptools import setup, find_packages
 
