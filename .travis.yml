@@ -20,7 +20,7 @@ script: >
   -e TRAVIS_PULL_REQUEST_BRANCH
   -e TRAVIS_COMMIT_RANGE
   -e CI
-  -v $PWD/..:/rapid-response-datastore lms /rapid-response-datastore/run_devstack_integration_tests.sh
+  -v $PWD/..:/rapid-response-xblock lms /rapid-response-xblock/run_devstack_integration_tests.sh
 services:
   - docker
 env:

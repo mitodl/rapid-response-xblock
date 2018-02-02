@@ -1,5 +1,5 @@
 """Just here to verify tests are running"""
-from rapid_response_datastore.func import add
+from rapid_response_xblock.func import add
 
 
 def test_thing():

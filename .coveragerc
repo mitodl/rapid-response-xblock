@@ -2,4 +2,4 @@
 branch = True
 omit = ./.tox/*
 data_file = .coverage
-source = rapid_response_datastore
+source = rapid_response_xblock
