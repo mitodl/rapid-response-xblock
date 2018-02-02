@@ -28,7 +28,7 @@ pip install --exists-action w -r requirements/edx/paver.txt
 pip install --exists-action w -r requirements/edx/testing.txt
 if [ -e requirements/edx/post.txt ]; then pip install --exists-action w -r requirements/edx/post.txt ; fi
 
-cd /rapid-response-datastore
+cd /rapid-response-xblock
 pip install -e .
 
 # Install codecov so we can upload code coverage results
@@ -44,6 +44,6 @@ pip freeze
 cp /edx/app/edxapp/edx-platform/setup.cfg .
 mkdir test_root  # for edx
 
-pytest ./rapid_response_datastore/ --cov . --pep8 --pylint
+pytest ./rapid_response_xblock/ --cov . --pep8 --pylint
 coverage xml
 codecov

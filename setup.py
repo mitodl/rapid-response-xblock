@@ -3,7 +3,7 @@
 import os
 from setuptools import setup, find_packages
 
-import rapid_response_datastore
+import rapid_response_xblock
 
 
 def package_data(pkg, root_list):
@@ -18,11 +18,11 @@ def package_data(pkg, root_list):
 
 
 setup(
-    name='rapid_response_datastore',
-    version=rapid_response_datastore.__version__,
-    description='Rapid Response XBlock datastore',
+    name='rapid_response_xblock',
+    version=rapid_response_xblock.__version__,
+    description='Rapid Response XBlock',
     license='BSD',
-    url="https://github.com/mitodl/rapid-response-datastore",
+    url="https://github.com/mitodl/rapid-response-xblock",
     author="MITx",
     zip_safe=False,
     packages=find_packages(),
