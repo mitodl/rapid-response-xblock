@@ -42,8 +42,8 @@ pip freeze
 
 # adjust test files for integration tests
 cp /edx/app/edxapp/edx-platform/setup.cfg .
-mkdir test_root  # for edx
+mkdir -p test_root  # for edx
 
-pytest ./rapid_response_xblock/ --cov . --pep8 --pylint
+pytest rapid_response_xblock tests --cov . --pep8 --pylint
 coverage xml
 codecov
