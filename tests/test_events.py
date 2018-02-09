@@ -13,15 +13,14 @@ from courseware.tests.factories import StaffFactory
 from ddt import data, ddt, unpack
 from django.http.request import HttpRequest
 import mock
-from opaque_keys.edx.locator import CourseLocator
 from opaque_keys.edx.keys import UsageKey
 from student.tests.factories import AdminFactory
 from xblock.fields import ScopeIds
 from xmodule.capa_module import CapaDescriptor
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
-from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
-from xmodule.modulestore.xml_importer import import_course_from_xml  # lint-amnesty, pylint: disable=import-error
+from xmodule.modulestore.tests.factories import ItemFactory
+from xmodule.modulestore.xml_importer import import_course_from_xml
 
 from rapid_response_xblock.logger import LoggerBackend
 from rapid_response_xblock.models import ProblemCheckRapidResponse
@@ -63,7 +62,8 @@ EXAMPLE_EVENT = {
         'submission': {
             '2582bbb68672426297e525b49a383eb8_2_1': {
                 'input_type': 'choicegroup',
-                'question': 'Add the question text, or prompt, here. This text is required.',
+                'question': 'Add the question text, or prompt, here.'
+                            ' This text is required.',
                 'group_label': '',
                 'response_type': 'multiplechoiceresponse',
                 'answer': 'an incorrect answer',
@@ -168,7 +168,8 @@ class TestEvents(ModuleStoreTestCase):
         """
         Import the test course with the sga unit
         """
-        # adapted from edx-platform/cms/djangoapps/contentstore/management/commands/tests/test_cleanup_assets.py
+        # adapted from edx-platform/cms/djangoapps/contentstore/
+        # management/commands/tests/test_cleanup_assets.py
         input_dir = os.path.join(BASE_DIR, "..", "test_data")
 
         temp_dir = tempfile.mkdtemp()
@@ -191,7 +192,10 @@ class TestEvents(ModuleStoreTestCase):
         """
         course = self.course
         store = modulestore()
-        problem = [item for item in store.get_items(course.course_id) if isinstance(item, CapaDescriptor)][0]
+        problem = [
+            item for item in store.get_items(course.course_id)
+            if isinstance(item, CapaDescriptor)
+        ][0]
         problem.bind_for_student(self.runtime, self.instructor)
 
         # Workaround handle_ajax binding strangeness
@@ -248,13 +252,16 @@ class TestEvents(ModuleStoreTestCase):
         problem = self.get_problem()
 
         problem.handle_ajax('problem_check', {
-            "input_i4x-SGAU-SGA101-problem-2582bbb68672426297e525b49a383eb8_2_1": clicked_answer_id
+            "input_i4x-SGAU-SGA101-problem-"
+            "2582bbb68672426297e525b49a383eb8_2_1": clicked_answer_id
         })
         assert ProblemCheckRapidResponse.objects.count() == 1
         obj = ProblemCheckRapidResponse.objects.first()
         assert obj.user_id == self.instructor.id
         assert obj.course_id == self.course.course_id
-        assert obj.problem_id.map_into_course(self.course.course_id) == problem.location
+        assert obj.problem_id.map_into_course(
+            self.course.course_id
+        ) == problem.location
         assert obj.answer_text == expected_answer_text
         assert obj.answer_id == clicked_answer_id
 
@@ -266,14 +273,17 @@ class TestEvents(ModuleStoreTestCase):
 
         for answer in ('choice_0', 'choice_1', 'choice_2'):
             problem.handle_ajax('problem_check', {
-                "input_i4x-SGAU-SGA101-problem-2582bbb68672426297e525b49a383eb8_2_1": answer
+                "input_i4x-SGAU-SGA101-problem-"
+                "2582bbb68672426297e525b49a383eb8_2_1": answer
             })
 
         assert ProblemCheckRapidResponse.objects.count() == 1
         obj = ProblemCheckRapidResponse.objects.first()
         assert obj.user_id == self.instructor.id
         assert obj.course_id == self.course.course_id
-        assert obj.problem_id.map_into_course(self.course.course_id) == problem.location
+        assert obj.problem_id.map_into_course(
+            self.course.course_id
+        ) == problem.location
         # Answer is the first one clicked
         assert obj.answer_text == 'a different incorrect answer'
         assert obj.answer_id == 'choice_2'  # the last one picked
@@ -289,7 +299,9 @@ class TestEvents(ModuleStoreTestCase):
             assert ProblemCheckRapidResponse.objects.count() == 1
             obj = ProblemCheckRapidResponse.objects.first()
             assert obj.user_id == event_copy['context']['user_id']
-            assert obj.problem_id == UsageKey.from_string(event_copy['event']['problem_id'])
+            assert obj.problem_id == UsageKey.from_string(
+                event_copy['event']['problem_id']
+            )
             # Answer is the first one clicked
             assert obj.answer_text == 'an incorrect answer'
             assert obj.answer_id == 'choice_0'
@@ -308,7 +320,7 @@ class TestEvents(ModuleStoreTestCase):
         If the user is missing no exception should be raised
         and event should be recorded
         """
-        def _func(copy):
+        def _func(copy):  # pylint: disable=missing-docstring
             del copy['context']['user_id']
 
         self.assert_event_parsing(_func, False)
@@ -317,16 +329,17 @@ class TestEvents(ModuleStoreTestCase):
         """
         If the problem id is missing no event should be recorded
         """
-        def _func(copy):
+        def _func(copy):  # pylint: disable=missing-docstring
             del copy['event']['problem_id']
 
         self.assert_event_parsing(_func, False)
 
     def test_extra_submission(self):
         """
-        If there is more than one submission in the event, no event should be recorded
+        If there is more than one submission in the event,
+        no event should be recorded
         """
-        def _func(copy):
+        def _func(copy):  # pylint: disable=missing-docstring
             key = '2582bbb68672426297e525b49a383eb8_2_1'
             submission = copy['event']['submission'][key]
             copy['event']['submission']['second'] = submission
@@ -335,9 +348,10 @@ class TestEvents(ModuleStoreTestCase):
 
     def test_no_submission(self):
         """
-        If there is more than one submission in the event, no event should be recorded
+        If there is more than one submission in the event,
+        no event should be recorded
         """
-        def _func(copy):
+        def _func(copy):  # pylint: disable=missing-docstring
             key = '2582bbb68672426297e525b49a383eb8_2_1'
             copy['event']['submission'][key] = None
 
@@ -347,7 +361,7 @@ class TestEvents(ModuleStoreTestCase):
         """
         If the answer id key is missing no event should be recorded
         """
-        def _func(copy):
+        def _func(copy):  # pylint: disable=missing-docstring
             copy['event']['answers'] = {}
 
         self.assert_event_parsing(_func, False)

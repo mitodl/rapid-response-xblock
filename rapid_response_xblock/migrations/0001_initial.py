@@ -10,6 +10,8 @@ import model_utils.fields
 import opaque_keys.edx.django.models
 
 
+# pylint: skip-file
+
 class Migration(migrations.Migration):
 
     dependencies = [

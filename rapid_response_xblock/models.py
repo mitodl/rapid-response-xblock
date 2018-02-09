@@ -32,8 +32,11 @@ class ProblemCheckRapidResponse(TimeStampedModel):
     event = JSONField()
 
     def __str__(self):
-        return "user={user} problem_id={problem_id} answer_id={answer_id}".format(
-            user=self.user,
-            problem_id=self.qualified_problem_id,
-            answer_id=self.answer_id,
+        return (
+            "user={user} problem_id={problem_id} "
+            "answer_id={answer_id}".format(
+                user=self.user,
+                problem_id=self.qualified_problem_id,
+                answer_id=self.answer_id,
+            )
         )
