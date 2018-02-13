@@ -15,7 +15,7 @@ from rapid_response_xblock.models import RapidResponseSubmission
 log = logging.getLogger(__name__)
 
 
-class LoggerBackend(BaseBackend):
+class SubmissionRecorder(BaseBackend):
     """
     Record events emitted by blocks.
     See TRACKING_BACKENDS for the configuration for this logger.

@@ -6,7 +6,7 @@ def plugin_settings(settings):
     Populate settings
     """
     settings.TRACKING_BACKENDS['rapid_response'] = {
-        'ENGINE': 'rapid_response_xblock.logger.LoggerBackend',
+        'ENGINE': 'rapid_response_xblock.logger.SubmissionRecorder',
         'OPTIONS': {
             'name': 'rapid_response',
         }
