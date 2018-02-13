@@ -22,8 +22,8 @@ from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import ItemFactory
 from xmodule.modulestore.xml_importer import import_course_from_xml
 
-from rapid_response_xblock.logger import LoggerBackend
-from rapid_response_xblock.models import ProblemCheckRapidResponse
+from rapid_response_xblock.logger import SubmissionRecorder
+from rapid_response_xblock.models import RapidResponseSubmission
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -135,7 +135,7 @@ class TestEvents(ModuleStoreTestCase):
         # to all registered loggers.
         block = self.course
         with mock.patch.object(
-            LoggerBackend, 'send', autospec=True,
+            SubmissionRecorder, 'send', autospec=True,
         ) as send_patch:
             self.runtime.publish(block, event_type, event_object)
         # If call_count is 0, make sure you installed
@@ -168,8 +168,8 @@ class TestEvents(ModuleStoreTestCase):
             "input_i4x-SGAU-SGA101-problem-"
             "2582bbb68672426297e525b49a383eb8_2_1": clicked_answer_id
         })
-        assert ProblemCheckRapidResponse.objects.count() == 1
-        obj = ProblemCheckRapidResponse.objects.first()
+        assert RapidResponseSubmission.objects.count() == 1
+        obj = RapidResponseSubmission.objects.first()
         assert obj.user_id == self.instructor.id
         assert obj.course_id == self.course.course_id
         assert obj.problem_id.map_into_course(
@@ -190,8 +190,8 @@ class TestEvents(ModuleStoreTestCase):
                 "2582bbb68672426297e525b49a383eb8_2_1": answer
             })
 
-        assert ProblemCheckRapidResponse.objects.count() == 1
-        obj = ProblemCheckRapidResponse.objects.first()
+        assert RapidResponseSubmission.objects.count() == 1
+        obj = RapidResponseSubmission.objects.first()
         assert obj.user_id == self.instructor.id
         assert obj.course_id == self.course.course_id
         assert obj.problem_id.map_into_course(
@@ -208,10 +208,10 @@ class TestEvents(ModuleStoreTestCase):
         with open(BASE_DIR, "..", "test_data", "example_event.json") as f:
             example_event = json.load(f)
         modification_func(example_event)
-        LoggerBackend().send(example_event)
+        SubmissionRecorder().send(example_event)
         if success:
-            assert ProblemCheckRapidResponse.objects.count() == 1
-            obj = ProblemCheckRapidResponse.objects.first()
+            assert RapidResponseSubmission.objects.count() == 1
+            obj = RapidResponseSubmission.objects.first()
             assert obj.user_id == example_event['context']['user_id']
             assert obj.problem_id == UsageKey.from_string(
                 example_event['event']['problem_id']
@@ -221,7 +221,7 @@ class TestEvents(ModuleStoreTestCase):
             assert obj.answer_id == 'choice_0'
             assert obj.event == example_event
         else:
-            assert ProblemCheckRapidResponse.objects.count() == 0
+            assert RapidResponseSubmission.objects.count() == 0
 
     def test_example_event(self):
         """

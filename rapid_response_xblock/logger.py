@@ -57,13 +57,13 @@ class SubmissionRecorder(BaseBackend):
 
                 # Delete any older responses for the user
                 with transaction.atomic():
-                    ProblemCheckRapidResponse.objects.filter(
+                    RapidResponseSubmission.objects.filter(
                         user_id=user_id,
                         course_id=course_key,
                         problem_id=problem_id,
                     ).delete()
 
-                    ProblemCheckRapidResponse.objects.create(
+                    RapidResponseSubmission.objects.create(
                         user_id=user_id,
                         course_id=course_key,
                         problem_id=problem_id,
