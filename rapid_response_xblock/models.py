@@ -15,9 +15,10 @@ from opaque_keys.edx.django.models import (
 
 
 @python_2_unicode_compatible
-class ProblemCheckRapidResponse(TimeStampedModel):
+class RapidResponseSubmission(TimeStampedModel):
     """
-    Keep track of events relating to rapid responses
+    Stores the student submissions for a problem that is
+    configured with rapid response
     """
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

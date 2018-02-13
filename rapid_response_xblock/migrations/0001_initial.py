@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='ProblemCheckRapidResponse',
+            name='RapidResponseSubmission',
             fields=[
                 ('id', models.AutoField(
                     verbose_name='ID',

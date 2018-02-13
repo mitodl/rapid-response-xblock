@@ -9,7 +9,7 @@ from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import CourseLocator
 from track.backends import BaseBackend
 
-from rapid_response_xblock.models import ProblemCheckRapidResponse
+from rapid_response_xblock.models import RapidResponseSubmission
 
 
 log = logging.getLogger(__name__)
