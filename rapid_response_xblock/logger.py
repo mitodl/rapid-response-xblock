@@ -50,10 +50,10 @@ class LoggerBackend(BaseBackend):
                         "Expected only one answer in problem_check event"
                     )
 
-                key = keys[0]
+                submission_key = keys[0]
 
-                answer_text = submission[key]['answer']
-                answer_id = event['event']['answers'][key]
+                answer_text = submission[submission_key]['answer']
+                answer_id = event['event']['answers'][submission_key]
 
                 # Delete any older responses for the user
                 with transaction.atomic():
