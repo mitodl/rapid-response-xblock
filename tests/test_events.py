@@ -1,5 +1,5 @@
 """Just here to verify tests are running"""
-from copy import deepcopy
+import json
 import os
 import shutil
 import tempfile
@@ -26,93 +26,6 @@ from rapid_response_xblock.logger import LoggerBackend
 from rapid_response_xblock.models import ProblemCheckRapidResponse
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-EXAMPLE_EVENT = {
-    'username': 'staff',
-    'context': {
-        'course_user_tags': {},
-        'user_id': 9,
-        'org_id': 'ReplaceStatic',
-        'asides': {},
-        'module': {
-            'display_name': 'Multiple Choice',
-            'usage_key': 'block-v1:ReplaceStatic+ReplaceStatic+2018_T1+type'
-                         '@problem+block@2582bbb68672426297e525b49a383eb8'
-        },
-        'course_id': 'course-v1:ReplaceStatic+ReplaceStatic+2018_T1',
-        'path': '/courses/course-v1:ReplaceStatic+ReplaceStatic+2018_T1/'
-                'xblock/block-v1:ReplaceStatic+ReplaceStatic+2018_T1+type'
-                '@problem+block@2582bbb68672426297e525b49a383eb8/handler/'
-                'xmodule_handler/problem_check'
-    },
-    'event_source': 'server',
-    'event_type': 'problem_check',
-    'ip': '172.20.0.1',
-    'agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:58.0) Gecko/20100101'
-             ' Firefox/58.0',
-    'page': 'x_module',
-    'host': '5327e6d14aed',
-    'referer': 'http://edx.devstack.lms:18000/courses/course-v1'
-               ':ReplaceStatic+ReplaceStatic+2018_T1/courseware/'
-               'chapter/sequential/1?activate_block_id=block-v1%3A'
-               'ReplaceStatic%2BReplaceStatic%2B2018_T1%2Btype%40'
-               'vertical%2Bblock%40vertical',
-    'accept_language': 'en;q=1.0, en;q=1.0',
-    'time': '2018-02-06T17:06:44.228Z',
-    'event': {
-        'submission': {
-            '2582bbb68672426297e525b49a383eb8_2_1': {
-                'input_type': 'choicegroup',
-                'question': 'Add the question text, or prompt, here.'
-                            ' This text is required.',
-                'group_label': '',
-                'response_type': 'multiplechoiceresponse',
-                'answer': 'an incorrect answer',
-                'variant': '',
-                'correct': False,
-            },
-        },
-        'success': 'incorrect',
-        'grade': 0,
-        'correct_map': {
-            '2582bbb68672426297e525b49a383eb8_2_1': {
-                'hint': '',
-                'hintmode': None,
-                'correctness': 'incorrect',
-                'msg': '',
-                'answervariable': None,
-                'npoints': None,
-                'queuestate': None
-            }
-        },
-        'attempts': 20,
-        'answers': {
-            '2582bbb68672426297e525b49a383eb8_2_1': 'choice_0'
-        },
-        'state': {
-            'correct_map': {
-                '2582bbb68672426297e525b49a383eb8_2_1': {
-                    'hint': '',
-                    'hintmode': None,
-                    'correctness': 'incorrect',
-                    'msg': '',
-                    'answervariable': None,
-                    'npoints': None,
-                    'queuestate': None}},
-            'input_state': {
-                '2582bbb68672426297e525b49a383eb8_2_1': {}
-            },
-            'has_saved_answers': False,
-            'seed': 1,
-            'done': True,
-            'student_answers': {
-                '2582bbb68672426297e525b49a383eb8_2_1': 'choice_2'
-            }
-        },
-        'max_grade': 1,
-        'problem_id': 'block-v1:ReplaceStatic+ReplaceStatic+2018_T1'
-                      '+type@problem+block@2582bbb68672426297e525b49a383eb8'
-    }
-}
 
 
 @ddt
@@ -292,20 +205,21 @@ class TestEvents(ModuleStoreTestCase):
         """
         Assert what happens when the event is parsed
         """
-        event_copy = deepcopy(EXAMPLE_EVENT)
-        modification_func(event_copy)
-        LoggerBackend().send(event_copy)
+        with open(BASE_DIR, "..", "test_data", "example_event.json") as f:
+            example_event = json.load(f)
+        modification_func(example_event)
+        LoggerBackend().send(example_event)
         if success:
             assert ProblemCheckRapidResponse.objects.count() == 1
             obj = ProblemCheckRapidResponse.objects.first()
-            assert obj.user_id == event_copy['context']['user_id']
+            assert obj.user_id == example_event['context']['user_id']
             assert obj.problem_id == UsageKey.from_string(
-                event_copy['event']['problem_id']
+                example_event['event']['problem_id']
             )
             # Answer is the first one clicked
             assert obj.answer_text == 'an incorrect answer'
             assert obj.answer_id == 'choice_0'
-            assert obj.event == event_copy
+            assert obj.event == example_event
         else:
             assert ProblemCheckRapidResponse.objects.count() == 0
 
