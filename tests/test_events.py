@@ -205,7 +205,7 @@ class TestEvents(ModuleStoreTestCase):
         """
         Assert what happens when the event is parsed
         """
-        with open(BASE_DIR, "..", "test_data", "example_event.json") as f:
+        with open(os.path.join(BASE_DIR, "..", "test_data", "example_event.json")) as f:
             example_event = json.load(f)
         modification_func(example_event)
         SubmissionRecorder().send(example_event)
