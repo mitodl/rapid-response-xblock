@@ -130,7 +130,7 @@ class TestEvents(ModuleStoreTestCase):
         event_object = {'a': 'event'}
 
         # If this package is installed TRACKING_BACKENDS should
-        # be configured to point to LoggerBackend. Since self.runtime is
+        # be configured to point to SubmissionRecorder. Since self.runtime is
         # an LmsModuleSystem, self.runtime.publish will send the event
         # to all registered loggers.
         block = self.course
