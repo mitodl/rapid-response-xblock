@@ -14,6 +14,7 @@ from ddt import data, ddt, unpack
 from django.http.request import HttpRequest
 import mock
 from opaque_keys.edx.keys import UsageKey
+import pytest
 from student.tests.factories import AdminFactory
 from xblock.fields import ScopeIds
 from xmodule.capa_module import CapaDescriptor
@@ -28,6 +29,15 @@ from rapid_response_xblock.models import RapidResponseSubmission
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
+@pytest.fixture(scope="class")
+def example_event(request):
+    """An example real event captured previously"""
+    with open(os.path.join(BASE_DIR, "..", "test_data", "example_event.json")) as f:
+        request.cls.example_event = json.load(f)
+        yield
+
+
+@pytest.mark.usefixtures("example_event")
 @ddt
 class TestEvents(ModuleStoreTestCase):
     """Tests for event capturing"""
@@ -201,81 +211,76 @@ class TestEvents(ModuleStoreTestCase):
         assert obj.answer_text == 'a different incorrect answer'
         assert obj.answer_id == 'choice_2'  # the last one picked
 
-    def assert_event_parsing(self, modification_func, success):
+    def assert_successful_event_parsing(self, example_event_data):
         """
         Assert what happens when the event is parsed
         """
-        with open(os.path.join(BASE_DIR, "..", "test_data", "example_event.json")) as f:
-            example_event = json.load(f)
-        modification_func(example_event)
-        SubmissionRecorder().send(example_event)
-        if success:
-            assert RapidResponseSubmission.objects.count() == 1
-            obj = RapidResponseSubmission.objects.first()
-            assert obj.user_id == example_event['context']['user_id']
-            assert obj.problem_id == UsageKey.from_string(
-                example_event['event']['problem_id']
-            )
-            # Answer is the first one clicked
-            assert obj.answer_text == 'an incorrect answer'
-            assert obj.answer_id == 'choice_0'
-            assert obj.event == example_event
-        else:
-            assert RapidResponseSubmission.objects.count() == 0
+        assert RapidResponseSubmission.objects.count() == 1
+        obj = RapidResponseSubmission.objects.first()
+        assert obj.user_id == example_event_data['context']['user_id']
+        assert obj.problem_id == UsageKey.from_string(
+            example_event_data['event']['problem_id']
+        )
+        # Answer is the first one clicked
+        assert obj.answer_text == 'an incorrect answer'
+        assert obj.answer_id == 'choice_0'
+        assert obj.event == example_event_data
+
+    def assert_unsuccessful_event_parsing(self):
+        """
+        Assert that no event was recorded
+        """
+        assert RapidResponseSubmission.objects.count() == 0
 
     def test_example_event(self):
         """
         Assert that the example event is a valid one
         """
-        self.assert_event_parsing(lambda _: None, True)
+        SubmissionRecorder().send(self.example_event)
+        self.assert_successful_event_parsing(self.example_event)
 
     def test_missing_user(self):
         """
         If the user is missing no exception should be raised
         and no event should be recorded
         """
-        def _func(copy):  # pylint: disable=missing-docstring
-            del copy['context']['user_id']
-
-        self.assert_event_parsing(_func, False)
+        del self.example_event['context']['user_id']
+        SubmissionRecorder().send(self.example_event)
+        self.assert_unsuccessful_event_parsing()
 
     def test_missing_problem_id(self):
         """
         If the problem id is missing no event should be recorded
         """
-        def _func(copy):  # pylint: disable=missing-docstring
-            del copy['event']['problem_id']
-
-        self.assert_event_parsing(_func, False)
+        del self.example_event['event']['problem_id']
+        SubmissionRecorder().send(self.example_event)
+        self.assert_unsuccessful_event_parsing()
 
     def test_extra_submission(self):
         """
         If there is more than one submission in the event,
         no event should be recorded
         """
-        def _func(copy):  # pylint: disable=missing-docstring
-            key = '2582bbb68672426297e525b49a383eb8_2_1'
-            submission = copy['event']['submission'][key]
-            copy['event']['submission']['second'] = submission
-
-        self.assert_event_parsing(_func, False)
+        key = '2582bbb68672426297e525b49a383eb8_2_1'
+        submission = self.example_event['event']['submission'][key]
+        self.example_event['event']['submission']['second'] = submission
+        SubmissionRecorder().send(self.example_event)
+        self.assert_unsuccessful_event_parsing()
 
     def test_no_submission(self):
         """
         If there is more than one submission in the event,
         no event should be recorded
         """
-        def _func(copy):  # pylint: disable=missing-docstring
-            key = '2582bbb68672426297e525b49a383eb8_2_1'
-            copy['event']['submission'][key] = None
-
-        self.assert_event_parsing(_func, False)
+        key = '2582bbb68672426297e525b49a383eb8_2_1'
+        self.example_event['event']['submission'][key] = None
+        SubmissionRecorder().send(self.example_event)
+        self.assert_unsuccessful_event_parsing()
 
     def test_missing_answer_id(self):
         """
         If the answer id key is missing no event should be recorded
         """
-        def _func(copy):  # pylint: disable=missing-docstring
-            copy['event']['answers'] = {}
-
-        self.assert_event_parsing(_func, False)
+        self.example_event['event']['answers'] = {}
+        SubmissionRecorder().send(self.example_event)
+        self.assert_unsuccessful_event_parsing()
