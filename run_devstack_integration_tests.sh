@@ -42,6 +42,10 @@ pip freeze
 
 # adjust test files for integration tests
 cp /edx/app/edxapp/edx-platform/setup.cfg .
+
+# Increase max line length
+sed -i 's/\[tool:pytest\]/\[tool:pytest\]\npep8maxlinelength = 119\n/' ./setup.cfg
+
 mkdir -p test_root  # for edx
 
 pytest rapid_response_xblock tests --cov . --pep8 --pylint
