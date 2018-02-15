@@ -37,7 +37,7 @@ class RapidResponseSubmission(TimeStampedModel):
             "user={user} problem_id={problem_id} "
             "answer_id={answer_id}".format(
                 user=self.user,
-                problem_id=self.qualified_problem_id,
+                problem_id=self.problem_id,
                 answer_id=self.answer_id,
             )
         )
