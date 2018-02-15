@@ -232,7 +232,7 @@ class TestEvents(ModuleStoreTestCase):
     def test_missing_user(self):
         """
         If the user is missing no exception should be raised
-        and event should be recorded
+        and no event should be recorded
         """
         def _func(copy):  # pylint: disable=missing-docstring
             del copy['context']['user_id']
