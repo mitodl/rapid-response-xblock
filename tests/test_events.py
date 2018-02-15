@@ -178,9 +178,9 @@ class TestEvents(ModuleStoreTestCase):
         assert obj.answer_text == expected_answer_text
         assert obj.answer_id == clicked_answer_id
 
-    def test_double_click(self):
+    def test_multiple_submissions(self):
         """
-        Only the last click should get captured
+        Only the last submission should get captured
         """
         problem = self.get_problem()
 
