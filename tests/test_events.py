@@ -29,7 +29,7 @@ from rapid_response_xblock.models import RapidResponseSubmission
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def example_event(request):
     """An example real event captured previously"""
     with open(os.path.join(BASE_DIR, "..", "test_data", "example_event.json")) as f:
