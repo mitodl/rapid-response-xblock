@@ -37,6 +37,7 @@ def example_event(request):
         yield
 
 
+# pylint: disable=no-member
 @pytest.mark.usefixtures("example_event")
 @ddt
 class TestEvents(ModuleStoreTestCase):
