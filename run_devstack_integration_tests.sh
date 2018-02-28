@@ -41,6 +41,9 @@ mkdir -p test_root  # for edx
 
 set +e
 
+# We're running pep8 directly here since pytest-pep8 hasn't been updated in a while and has a bug
+# linting this project's code. pylint is also run directly since it seems cleaner to run them both
+# separately than to run one as a plugin and one by itself.
 pytest tests --cov .
 PYTEST_SUCCESS=$?
 pep8 rapid_response_xblock tests
