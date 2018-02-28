@@ -34,9 +34,6 @@ pip install -e .
 # Install codecov so we can upload code coverage results
 pip install codecov
 
-# linting stuff not included with edx
-pip install -r test_requirements.txt
-
 # output the packages which are installed for logging
 pip freeze
 
