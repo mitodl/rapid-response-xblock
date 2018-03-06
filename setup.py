@@ -1,8 +1,20 @@
 """Setup for rapid-response XBlock."""
 
+import os
 from setuptools import setup, find_packages
 
 import rapid_response_xblock
+
+
+def package_data(pkg, root_list):
+    """Generic function to find package_data for `pkg` under `root`."""
+    data = []
+    for root in root_list:
+        for dirname, _, files in os.walk(os.path.join(pkg, root)):
+            for fname in files:
+                data.append(os.path.relpath(os.path.join(dirname, fname), pkg))
+
+    return {pkg: data}
 
 
 setup(
@@ -13,14 +25,21 @@ setup(
     url="https://github.com/mitodl/rapid-response-xblock",
     author="MITx",
     zip_safe=False,
+    install_requires=[
+        'django>=1.8,<=1.11',
+        'XBlock',
+        'xblock-utils',
+        'edx-opaque-keys'
+    ],
     packages=find_packages(),
+    package_data=package_data("rapid_response_xblock", ["static"]),
     include_package_data=True,
-    install_requires=['django>=1.8,<=1.11'],
     entry_points={
-        "lms.djangoapp": [
-            "rapid_response_xblock = "
-            "rapid_response_xblock.apps:RapidResponseAppConfig"
+        'xblock_asides.v1': [
+            'rapid_response_xblock = rapid_response_xblock.block:RapidResponseAside',
         ],
-        "cms.djangoapp": []
+        'lms.djangoapp': [
+            'rapid_response_xblock = rapid_response_xblock.apps:RapidResponseAppConfig'
+        ],
     }
 )

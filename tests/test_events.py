@@ -1,35 +1,29 @@
 """Just here to verify tests are running"""
 import json
 import os
-import shutil
-import tempfile
+import mock
+import pytest
 
-from courseware.module_render import (
-    get_module_system_for_user,
-    load_single_xblock,
-    make_track_function,
-)
-from courseware.tests.factories import StaffFactory
 from ddt import data, ddt, unpack
 from django.http.request import HttpRequest
-import mock
+
 from opaque_keys.edx.keys import UsageKey
-import pytest
-from student.tests.factories import AdminFactory
-from xblock.fields import ScopeIds
+from courseware.module_render import load_single_xblock
 from xmodule.capa_module import CapaDescriptor
 from xmodule.modulestore.django import modulestore
-from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
-from xmodule.modulestore.tests.factories import ItemFactory
-from xmodule.modulestore.xml_importer import import_course_from_xml
 
 from rapid_response_xblock.logger import SubmissionRecorder
 from rapid_response_xblock.models import RapidResponseSubmission
+from tests.utils import (
+    RuntimeEnabledTestCase,
+    make_scope_ids,
+)
+
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def example_event(request):
     """An example real event captured previously"""
     with open(os.path.join(BASE_DIR, "..", "test_data", "example_event.json")) as f:
@@ -40,75 +34,12 @@ def example_event(request):
 # pylint: disable=no-member
 @pytest.mark.usefixtures("example_event")
 @ddt
-class TestEvents(ModuleStoreTestCase):
+class TestEvents(RuntimeEnabledTestCase):
     """Tests for event capturing"""
 
     def setUp(self):
         super(TestEvents, self).setUp()
-        self.track_function = make_track_function(HttpRequest())
-        self.student_data = mock.Mock()
-        self.course = self.import_test_course()
-        self.descriptor = ItemFactory(category="pure", parent=self.course)
-        self.course_id = self.course.id
-        self.instructor = StaffFactory.create(course_key=self.course_id)
-        self.runtime = self.make_runtime()
-        self.runtime.error_tracker = None
-        self.scope_ids = self.make_scope_ids(self.runtime)
-        self.staff = AdminFactory.create()
-
-        self.course.bind_for_student(self.runtime, self.instructor)
-
-    def make_scope_ids(self, runtime):
-        """
-        Make scope ids
-        """
-        block_type = 'fake'
-        def_id = runtime.id_generator.create_definition(block_type)
-        return ScopeIds(
-            'user', block_type, def_id, self.descriptor.location
-        )
-
-    def make_runtime(self, **kwargs):
-        """
-        Make a runtime
-        """
-        runtime, _ = get_module_system_for_user(
-            user=self.instructor,
-            student_data=self.student_data,
-            descriptor=self.descriptor,
-            course_id=self.course.id,
-            track_function=self.track_function,
-            xqueue_callback_url_prefix=mock.Mock(),
-            request_token=mock.Mock(),
-            course=self.course,
-            wrap_xmodule_display=False,
-            **kwargs
-        )
-        runtime.get_policy = lambda _: {}
-
-        return runtime
-
-    def import_test_course(self):
-        """
-        Import the test course with the sga unit
-        """
-        # adapted from edx-platform/cms/djangoapps/contentstore/
-        # management/commands/tests/test_cleanup_assets.py
-        input_dir = os.path.join(BASE_DIR, "..", "test_data")
-
-        temp_dir = tempfile.mkdtemp()
-        self.addCleanup(lambda: shutil.rmtree(temp_dir))
-
-        xml_dir = os.path.join(temp_dir, "xml")
-        shutil.copytree(input_dir, xml_dir)
-
-        store = modulestore()
-        courses = import_course_from_xml(
-            store,
-            'sga_user',
-            xml_dir,
-        )
-        return courses[0]
+        self.scope_ids = make_scope_ids(self.runtime, self.descriptor)
 
     def get_problem(self):
         """

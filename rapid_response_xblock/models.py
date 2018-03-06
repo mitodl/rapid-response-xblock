@@ -1,5 +1,5 @@
 """
-Models for storing rapid response grades
+Rapid Response block models
 """
 from __future__ import unicode_literals
 
@@ -39,5 +39,25 @@ class RapidResponseSubmission(TimeStampedModel):
                 user=self.user,
                 problem_id=self.problem_id,
                 answer_id=self.answer_id,
+            )
+        )
+
+
+@python_2_unicode_compatible
+class RapidResponseBlockStatus(models.Model):
+    """
+    Indicates whether a rapid-response-enabled XBlock for a given course is "open" or not
+    ("open" = set to collect student responses for the block in real time)
+    """
+    usage_key = UsageKeyField(max_length=255, db_index=True)
+    course_key = CourseKeyField(max_length=255, db_index=True)
+    open = models.BooleanField(default=False, null=False)
+
+    def __str__(self):
+        return (
+            "open={open} usage_key={usage_key} course_key={course_key}".format(
+                open=self.open,
+                usage_key=self.usage_key,
+                course_key=self.course_key
             )
         )
