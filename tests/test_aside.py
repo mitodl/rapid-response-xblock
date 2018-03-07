@@ -1,27 +1,22 @@
 """Tests for the rapid-response aside logic"""
 from ddt import data, ddt, unpack
 from mock import Mock, patch
-from random import choice
 
 from django.contrib.auth.models import User
 from opaque_keys.edx.keys import UsageKey
-from opaque_keys.edx.locator import CourseLocator
 import pytest
 
 from rapid_response_xblock.block import RapidResponseAside
-from rapid_response_xblock.logger import SubmissionRecorder
 from rapid_response_xblock.models import (
     RapidResponseBlockStatus,
     RapidResponseSubmission,
 )
 from tests.utils import (
-    combine_dicts,
     make_scope_ids,
     RuntimeEnabledTestCase,
 )
 
 
-# pylint: disable=no-member
 @ddt
 class RapidResponseAsideTests(RuntimeEnabledTestCase):
     """Tests for RapidResponseAside logic"""
