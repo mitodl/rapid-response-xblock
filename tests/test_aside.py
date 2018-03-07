@@ -13,7 +13,7 @@ from rapid_response_xblock.models import (
     RapidResponseSubmission,
 )
 from tests.utils import (
-    dict_with,
+    combine_dicts,
     make_scope_ids,
     RuntimeEnabledTestCase,
 )
@@ -113,9 +113,9 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         Test that the responses API will show recorded events during the open period
         """
         event = self.example_event
-        event_before = dict_with(event, {'test_data': 'before'})
-        event_during = dict_with(event, {'test_data': 'during'})
-        event_after = dict_with(event, {'test_data': 'after'})
+        event_before = combine_dicts(event, {'test_data': 'before'})
+        event_during = combine_dicts(event, {'test_data': 'during'})
+        event_after = combine_dicts(event, {'test_data': 'after'})
 
         problem_id = UsageKey.from_string(event['event']['problem_id'])
         course_id = CourseLocator.from_string(event['context']['course_id'])

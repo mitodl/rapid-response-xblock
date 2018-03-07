@@ -40,7 +40,7 @@ def make_scope_ids(runtime, usage_key):
     )
 
 
-def dict_with(dictionary, extras):
+def combine_dicts(dictionary, extras):
     """
     Similar to {**dictionary, **extras} in Python 3
 
