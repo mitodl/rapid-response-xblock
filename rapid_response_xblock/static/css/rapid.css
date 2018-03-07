@@ -7,3 +7,15 @@ button.problem-status-toggle:hover {
 #rapid-response-content td, #rapid-response-content th {
     border: 1px solid black;
 }
+
+.tick text {
+    font-size: 30pt;
+}
+
+text.message {
+    font-size: 30pt;
+}
+
+.hidden {
+    display: none;
+}
