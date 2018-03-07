@@ -60,8 +60,10 @@
       var block = $element.find(rapidTopLevelSel);
       var isOpen = block.attr('data-open') === 'True';
       var isStaff = block.attr('data-staff') === 'True';
-      state.is_open = isOpen;
-      state.is_staff = isStaff;
+      Object.assign(state, {
+        is_open: isOpen,
+        is_staff: isStaff
+      });
       render();
 
       if (isStaff) {
