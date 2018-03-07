@@ -10,7 +10,6 @@ from web_fragments.fragment import Fragment
 from webob.response import Response
 
 from xblock.core import XBlock, XBlockAside
-from xmodule.x_module import XModuleMixin
 
 from rapid_response_xblock.models import RapidResponseBlockStatus
 
@@ -67,7 +66,7 @@ def staff_only_handler_method(handler_method):
 TemplateContext = namedtuple('TemplateContext', ['is_staff', 'is_open'])
 
 
-class RapidResponseAside(XBlockAside, XModuleMixin):
+class RapidResponseAside(XBlockAside):
     """
     XBlock aside that enables rapid-response functionality for an XBlock
     """
