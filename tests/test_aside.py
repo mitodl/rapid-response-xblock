@@ -1,7 +1,9 @@
 """Tests for the rapid-response aside logic"""
 from ddt import data, ddt, unpack
 from mock import Mock, patch
+from random import choice
 
+from django.contrib.auth.models import User
 from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import CourseLocator
 import pytest
@@ -112,35 +114,52 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         """
         Test that the responses API will show recorded events during the open period
         """
-        event = self.example_event
-        event_before = combine_dicts(event, {'test_data': 'before'})
-        event_during = combine_dicts(event, {'test_data': 'during'})
-        event_after = combine_dicts(event, {'test_data': 'after'})
+        problem_id = self.aside_instance.wrapped_block_usage_key
+        course_id = self.aside_instance.course_key
 
-        problem_id = UsageKey.from_string(event['event']['problem_id'])
-        course_id = CourseLocator.from_string(event['context']['course_id'])
+        submissions = []
+        for n in range(50):
+            username = 'user_{}'.format(n)
+            email = 'user{}@email.com'.format(n)
+            answer_id = 'answer_{}'.format(n)
+            answer_text = 'Answer #{}'.format(n)
 
-        recorder = SubmissionRecorder()
-        recorder.send(event_before)
-        block_status = RapidResponseBlockStatus.objects.create(
-            usage_key=problem_id,
-            course_key=course_id,
-            open=True,
+            user = User.objects.create(
+                username=username,
+                email=email,
+            )
+
+            submissions.append(
+                RapidResponseSubmission.objects.create(
+                    course_id=course_id,
+                    problem_id=problem_id,
+                    user_id=user.id,
+                    answer_id=answer_id,
+                    answer_text=answer_text,
+                    event={}
+                )
+            )
+
+        # create another submission which has a different problem id and won't be included in the results
+        user = User.objects.create(
+            username='user_missing',
+            email='user@user.user'
         )
-        recorder.send(event_during)
-        block_status.open = False
-        block_status.save()
-        recorder.send(event_after)
-
-        assert RapidResponseSubmission.objects.count() == 1
-        submission = RapidResponseSubmission.objects.first()
-        assert submission.event['test_data'] == event_during['test_data']
+        RapidResponseSubmission.objects.create(
+            course_id=course_id,
+            problem_id=UsageKey.from_string(unicode(problem_id) + "extra"),
+            user_id=user.id,
+            answer_id='answer_0',
+            answer_text='Answer #0',
+            event={}
+        )
 
         resp = self.aside_instance.responses()
         assert resp.status_code == 200
         assert resp.json['is_open'] is False
+
         assert resp.json['responses'] == [{
             'id': submission.id,
             'answer_id': submission.answer_id,
             'answer_text': submission.answer_text,
-        }]
+        } for submission in submissions]

@@ -17,8 +17,9 @@ from rapid_response_xblock.models import (
     RapidResponseSubmission,
 )
 from tests.utils import (
-    RuntimeEnabledTestCase,
+    combine_dicts,
     make_scope_ids,
+    RuntimeEnabledTestCase,
 )
 
 
@@ -228,3 +229,36 @@ class TestEvents(RuntimeEnabledTestCase):
         self.example_event['event']['answers'] = {}
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
+
+    @pytest.mark.usefixtures("example_event")
+    def test_open(self):
+        """
+        Events should be recorded only when the problem is open
+        """
+        event = self.example_event
+        event_before = combine_dicts(event, {'test_data': 'before'})
+        event_during = combine_dicts(event, {'test_data': 'during'})
+        event_after = combine_dicts(event, {'test_data': 'after'})
+
+        problem_id = UsageKey.from_string(event['event']['problem_id'])
+        course_id = CourseLocator.from_string(event['context']['course_id'])
+
+        block_status = RapidResponseBlockStatus.objects.get(
+            usage_key=problem_id,
+            course_key=course_id,
+        )
+        block_status.open = False
+        block_status.save()
+
+        recorder = SubmissionRecorder()
+        recorder.send(event_before)
+        block_status.open = True
+        block_status.save()
+        recorder.send(event_during)
+        block_status.open = False
+        block_status.save()
+        recorder.send(event_after)
+
+        assert RapidResponseSubmission.objects.count() == 1
+        submission = RapidResponseSubmission.objects.first()
+        assert submission.event['test_data'] == event_during['test_data']
