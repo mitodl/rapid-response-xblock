@@ -15,6 +15,7 @@ from student.tests.factories import AdminFactory
 from xblock.fields import ScopeIds
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
+from xmodule.modulestore.tests.factories import ItemFactory
 from xmodule.modulestore.xml_importer import import_course_from_xml
 
 
@@ -65,6 +66,7 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
         self.track_function = make_track_function(HttpRequest())
         self.student_data = Mock()
         self.course = self.import_test_course()
+        self.descriptor = ItemFactory(category="pure", parent=self.course)
         self.course_id = self.course.id
         self.instructor = StaffFactory.create(course_key=self.course_id)
         self.runtime = self.make_runtime()
@@ -79,7 +81,7 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
         runtime, _ = get_module_system_for_user(
             user=self.instructor,
             student_data=self.student_data,
-            descriptor=self.course,
+            descriptor=self.descriptor,
             course_id=self.course.id,
             track_function=self.track_function,
             xqueue_callback_url_prefix=Mock(),

@@ -30,7 +30,7 @@ class TestEvents(RuntimeEnabledTestCase):
 
     def setUp(self):
         super(TestEvents, self).setUp()
-        self.scope_ids = make_scope_ids(self.runtime, self.course.id)
+        self.scope_ids = make_scope_ids(self.runtime, self.descriptor)
 
         # For the test_data course
         RapidResponseBlockStatus.objects.create(
