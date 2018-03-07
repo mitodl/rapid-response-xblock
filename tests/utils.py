@@ -25,7 +25,6 @@ def make_scope_ids(runtime, usage_key):
     """
     Make scope ids
 
-    from opaque_keys.edx.keys import UsageKey
     Args:
         runtime (xblock.runtime.Runtime): A runtime
         usage_key (opaque_keys.edx.keys.UsageKey): A usage key
