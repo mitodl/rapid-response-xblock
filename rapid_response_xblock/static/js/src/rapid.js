@@ -31,7 +31,9 @@
             state = Object.assign({}, state, newState);
             render();
 
-            pollForResponses();
+            if (state.is_open) {
+              pollForResponses();
+            }
           }
         ).fail(
           function () {
