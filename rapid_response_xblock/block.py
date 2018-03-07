@@ -144,7 +144,7 @@ class RapidResponseAside(XBlockAside):
     @staff_only_handler_method
     def responses(self, request=None, suffix=None):  # pylint: disable=unused-argument
         """
-        REST API for response information
+        Returns student responses for rapid-response-enabled block
         """
         status = RapidResponseBlockStatus.objects.filter(
             usage_key=self.wrapped_block_usage_key,
