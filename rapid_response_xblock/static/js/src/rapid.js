@@ -1,5 +1,9 @@
 (function($, _) {
   'use strict';
+
+  // time between polls of responses API
+  var POLLING_MILLIS = 3000;
+
   function RapidResponseAsideView(runtime, element) {
     var toggleStatusUrl = runtime.handlerUrl(element, 'toggle_block_open_status');
     var responsesUrl = runtime.handlerUrl(element, 'responses');
@@ -42,7 +46,7 @@
         state = Object.assign({}, state, newState);
         render();
         if (state.is_open) {
-          setTimeout(pollForResponses, 3000);
+          setTimeout(pollForResponses, POLLING_MILLIS);
         }
       }).fail(function () {
         // TODO: try again?
@@ -58,7 +62,9 @@
       state.is_staff = isStaff;
       render();
 
-      pollForResponses();
+      if (isStaff) {
+        pollForResponses();
+      }
     });
   }
 
