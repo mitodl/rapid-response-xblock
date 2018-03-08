@@ -34,7 +34,7 @@ class TestEvents(RuntimeEnabledTestCase):
         self.scope_ids = make_scope_ids(self.runtime, self.descriptor)
 
         # For the test_data course
-        RapidResponseBlockStatus.objects.create(
+        self.test_data_status = RapidResponseBlockStatus.objects.create(
             usage_key=UsageKey.from_string(
                 "i4x://SGAU/SGA101/problem/2582bbb68672426297e525b49a383eb8"
             ),
@@ -48,7 +48,7 @@ class TestEvents(RuntimeEnabledTestCase):
         usage_key = UsageKey.from_string(
             "block-v1:ReplaceStatic+ReplaceStatic+2018_T1+type@problem+block@2582bbb68672426297e525b49a383eb8"
         )
-        RapidResponseBlockStatus.objects.create(
+        self.example_status = RapidResponseBlockStatus.objects.create(
             usage_key=usage_key,
             course_key=usage_key.course_key,
             open=True,
@@ -240,23 +240,16 @@ class TestEvents(RuntimeEnabledTestCase):
         event_during = combine_dicts(event, {'test_data': 'during'})
         event_after = combine_dicts(event, {'test_data': 'after'})
 
-        problem_id = UsageKey.from_string(event['event']['problem_id'])
-        course_id = CourseLocator.from_string(event['context']['course_id'])
-
-        block_status = RapidResponseBlockStatus.objects.get(
-            usage_key=problem_id,
-            course_key=course_id,
-        )
-        block_status.open = False
-        block_status.save()
+        self.example_status.open = False
+        self.example_status.save()
 
         recorder = SubmissionRecorder()
         recorder.send(event_before)
-        block_status.open = True
-        block_status.save()
+        self.example_status.open = True
+        self.example_status.save()
         recorder.send(event_during)
-        block_status.open = False
-        block_status.save()
+        self.example_status.open = False
+        self.example_status.save()
         recorder.send(event_after)
 
         assert RapidResponseSubmission.objects.count() == 1
