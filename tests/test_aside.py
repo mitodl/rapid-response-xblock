@@ -113,7 +113,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         course_id = self.aside_instance.course_key
 
         submissions = []
-        for n in range(50):
+        for n in range(5):
             username = 'user_{}'.format(n)
             email = 'user{}@email.com'.format(n)
             answer_id = 'answer_{}'.format(n)
