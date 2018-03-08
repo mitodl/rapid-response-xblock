@@ -25,12 +25,35 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 def make_scope_ids(runtime, usage_key):
     """
     Make scope ids
+
+    Args:
+        runtime (xblock.runtime.Runtime): A runtime
+        usage_key (opaque_keys.edx.keys.UsageKey): A usage key
+
+    Returns:
+        xblock.fields.ScopeIds: A ScopeIds object for the block for usage_key
     """
     block_type = 'fake'
     def_id = runtime.id_generator.create_definition(block_type)
     return ScopeIds(
         'user', block_type, def_id, usage_key
     )
+
+
+def combine_dicts(dictionary, extras):
+    """
+    Similar to {**dictionary, **extras} in Python 3
+
+    Args:
+        dictionary (dict): A dictionary
+        extras (dict): Another dictionary
+
+    Returns:
+        dict: A new dictionary with both key and value pairs
+    """
+    ret = dict(dictionary)
+    ret.update(extras)
+    return ret
 
 
 class RuntimeEnabledTestCase(ModuleStoreTestCase):

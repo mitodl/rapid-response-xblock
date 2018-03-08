@@ -1,22 +1,39 @@
 (function($, _) {
   'use strict';
+
+  // time between polls of responses API
+  var POLLING_MILLIS = 3000;
+
   function RapidResponseAsideView(runtime, element) {
     var toggleStatusUrl = runtime.handlerUrl(element, 'toggle_block_open_status');
+    var responsesUrl = runtime.handlerUrl(element, 'responses');
     var $element = $(element);
 
     var rapidTopLevelSel = '.rapid-response-block';
     var rapidBlockContentSel = '#rapid-response-content';
     var toggleTemplate = _.template($(element).find("#rapid-response-toggle-tmpl").text());
 
-    function render(state) {
+    // default values
+    var state = {
+      is_open: false,
+      is_staff: false,
+      responses: []
+    };
+
+    function render() {
       // Render template
       var $rapidBlockContent = $element.find(rapidBlockContentSel);
       $rapidBlockContent.html(toggleTemplate(state));
 
       $rapidBlockContent.find('.problem-status-toggle').click(function(e) {
         $.get(toggleStatusUrl).then(
-          function(state) {
-            render(state);
+          function(newState) {
+            state = Object.assign({}, state, newState);
+            render();
+
+            if (state.is_open) {
+              pollForResponses();
+            }
           }
         ).fail(
           function () {
@@ -26,14 +43,30 @@
       });
     }
 
+    function pollForResponses() {
+      $.get(responsesUrl).then(function(newState) {
+        state = Object.assign({}, state, newState);
+        render();
+        if (state.is_open) {
+          setTimeout(pollForResponses, POLLING_MILLIS);
+        }
+      }).fail(function () {
+        // TODO: try again?
+        console.error("Error retrieving response data");
+      });
+    }
+
     $(function($) { // onLoad
       var block = $element.find(rapidTopLevelSel);
-      var isOpen = block.attr('data-open') === 'True';
-      var isStaff = block.attr('data-staff') === 'True';
-      render({
-        is_open: isOpen,
-        is_staff: isStaff
+      Object.assign(state, {
+        is_open: block.attr('data-open') === 'True',
+        is_staff: block.attr('data-staff') === 'True'
       });
+      render();
+
+      if (state.is_staff) {
+        pollForResponses();
+      }
     });
   }
 

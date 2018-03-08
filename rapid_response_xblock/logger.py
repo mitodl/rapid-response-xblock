@@ -9,7 +9,10 @@ from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import CourseLocator
 from track.backends import BaseBackend
 
-from rapid_response_xblock.models import RapidResponseSubmission
+from rapid_response_xblock.models import (
+    RapidResponseBlockStatus,
+    RapidResponseSubmission,
+)
 
 
 log = logging.getLogger(__name__)
@@ -27,7 +30,6 @@ class SubmissionRecorder(BaseBackend):
 
     def send(self, event):
         # TODO: feature flag whitelisting valid problems
-        # TODO: only capture when problem is open
         if event['event_type'] == 'problem_check':
             try:
                 user_id = event['context']['user_id']
@@ -54,6 +56,14 @@ class SubmissionRecorder(BaseBackend):
 
                 answer_text = submission[submission_key]['answer']
                 answer_id = event['event']['answers'][submission_key]
+
+                if not RapidResponseBlockStatus.objects.filter(
+                    usage_key=problem_id,
+                    course_key=course_key,
+                    open=True
+                ).exists():
+                    # Problem is not open
+                    return
 
                 # Delete any older responses for the user
                 with transaction.atomic():

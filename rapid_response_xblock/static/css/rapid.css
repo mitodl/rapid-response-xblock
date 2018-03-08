@@ -3,3 +3,7 @@ button.problem-status-toggle:hover {
     background-image: none;
     box-shadow: none;
 }
+
+#rapid-response-content td, #rapid-response-content th {
+    border: 1px solid black;
+}

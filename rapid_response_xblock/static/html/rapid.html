@@ -9,6 +9,26 @@
           <%= is_open ? "Close" : "Open" %> Problem For Live Responses
         </button>
       </p>
+      <% if (responses) { %>
+        <table>
+          <tr>
+            <th>Primary key</th>
+            <th>Answer id</th>
+            <th>Answer text</th>
+          </tr>
+          <% _.forEach(responses, function(response) { %>
+          <tr>
+            <td><%= response.id %></td>
+            <td><%= response.answer_id %></td>
+            <td><%= response.answer_text %></td>
+          </tr>
+          <% }) %>
+        </table>
+      <% } else { %>
+        <p>
+          No responses to display
+        </p>
+      <% } %>
     <% } %>
   </script>
 </div>

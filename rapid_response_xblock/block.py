@@ -11,7 +11,10 @@ from webob.response import Response
 
 from xblock.core import XBlock, XBlockAside
 
-from rapid_response_xblock.models import RapidResponseBlockStatus
+from rapid_response_xblock.models import (
+    RapidResponseBlockStatus,
+    RapidResponseSubmission,
+)
 
 log = logging.getLogger(__name__)
 
@@ -136,3 +139,25 @@ class RapidResponseAside(XBlockAside):
             is_open=is_open,
             is_staff=self.is_staff()
         )._asdict()
+
+    @XBlock.handler
+    @staff_only_handler_method
+    def responses(self, request=None, suffix=None):  # pylint: disable=unused-argument
+        """
+        Returns student responses for rapid-response-enabled block
+        """
+        status = RapidResponseBlockStatus.objects.filter(
+            usage_key=self.wrapped_block_usage_key,
+            course_key=self.course_key
+        ).first()
+        is_open = False if not status else status.open
+        responses = list(
+            RapidResponseSubmission.objects.filter(
+                problem_id=self.wrapped_block_usage_key,
+                course_id=self.course_key,
+            ).values('id', 'answer_id', 'answer_text')
+        )
+        return Response(json_body={
+            'is_open': is_open,
+            'responses': responses,
+        })

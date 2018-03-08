@@ -1,6 +1,4 @@
 """Just here to verify tests are running"""
-import json
-import os
 import mock
 import pytest
 
@@ -8,27 +6,21 @@ from ddt import data, ddt, unpack
 from django.http.request import HttpRequest
 
 from opaque_keys.edx.keys import UsageKey
+from opaque_keys.edx.locator import CourseLocator
 from courseware.module_render import load_single_xblock
 from xmodule.capa_module import CapaDescriptor
 from xmodule.modulestore.django import modulestore
 
 from rapid_response_xblock.logger import SubmissionRecorder
-from rapid_response_xblock.models import RapidResponseSubmission
-from tests.utils import (
-    RuntimeEnabledTestCase,
-    make_scope_ids,
+from rapid_response_xblock.models import (
+    RapidResponseBlockStatus,
+    RapidResponseSubmission,
 )
-
-
-BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-
-
-@pytest.fixture(scope="function")
-def example_event(request):
-    """An example real event captured previously"""
-    with open(os.path.join(BASE_DIR, "..", "test_data", "example_event.json")) as f:
-        request.cls.example_event = json.load(f)
-        yield
+from tests.utils import (
+    combine_dicts,
+    make_scope_ids,
+    RuntimeEnabledTestCase,
+)
 
 
 # pylint: disable=no-member
@@ -40,6 +32,27 @@ class TestEvents(RuntimeEnabledTestCase):
     def setUp(self):
         super(TestEvents, self).setUp()
         self.scope_ids = make_scope_ids(self.runtime, self.descriptor)
+
+        # For the test_data course
+        self.test_data_status = RapidResponseBlockStatus.objects.create(
+            usage_key=UsageKey.from_string(
+                "i4x://SGAU/SGA101/problem/2582bbb68672426297e525b49a383eb8"
+            ),
+            course_key=CourseLocator.from_string(
+                'SGAU/SGA101/2017_SGA'
+            ),
+            open=True,
+        )
+
+        # For the block id in example_event.json
+        usage_key = UsageKey.from_string(
+            "block-v1:ReplaceStatic+ReplaceStatic+2018_T1+type@problem+block@2582bbb68672426297e525b49a383eb8"
+        )
+        self.example_status = RapidResponseBlockStatus.objects.create(
+            usage_key=usage_key,
+            course_key=usage_key.course_key,
+            open=True,
+        )
 
     def get_problem(self):
         """
@@ -59,9 +72,9 @@ class TestEvents(RuntimeEnabledTestCase):
         request.META['SERVER_PORT'] = 1234
         return load_single_xblock(
             request=request,
-            course_id=self.course_id.to_deprecated_string(),
+            course_id=unicode(self.course_id),
             user_id=self.instructor.id,
-            usage_key_string=problem.location.to_deprecated_string()
+            usage_key_string=unicode(problem.location)
         )
 
     def test_publish(self):
@@ -216,3 +229,29 @@ class TestEvents(RuntimeEnabledTestCase):
         self.example_event['event']['answers'] = {}
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
+
+    @pytest.mark.usefixtures("example_event")
+    def test_open(self):
+        """
+        Events should be recorded only when the problem is open
+        """
+        event = self.example_event
+        event_before = combine_dicts(event, {'test_data': 'before'})
+        event_during = combine_dicts(event, {'test_data': 'during'})
+        event_after = combine_dicts(event, {'test_data': 'after'})
+
+        self.example_status.open = False
+        self.example_status.save()
+
+        recorder = SubmissionRecorder()
+        recorder.send(event_before)
+        self.example_status.open = True
+        self.example_status.save()
+        recorder.send(event_during)
+        self.example_status.open = False
+        self.example_status.save()
+        recorder.send(event_after)
+
+        assert RapidResponseSubmission.objects.count() == 1
+        submission = RapidResponseSubmission.objects.first()
+        assert submission.event['test_data'] == event_during['test_data']
