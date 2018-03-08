@@ -58,15 +58,13 @@
 
     $(function($) { // onLoad
       var block = $element.find(rapidTopLevelSel);
-      var isOpen = block.attr('data-open') === 'True';
-      var isStaff = block.attr('data-staff') === 'True';
       Object.assign(state, {
-        is_open: isOpen,
-        is_staff: isStaff
+        is_open: block.attr('data-open') === 'True',
+        is_staff: block.attr('data-staff') === 'True'
       });
       render();
 
-      if (isStaff) {
+      if (state.is_staff) {
         pollForResponses();
       }
     });
