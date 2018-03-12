@@ -36,7 +36,7 @@ class SubmissionRecorder(BaseBackend):
                 problem_id = UsageKey.from_string(
                     event['event']['problem_id']
                 )
-                # usage_key.course_id may have a missing run
+                # problem_id.course_id may have a missing run
                 # so we need to grab the course key separately
                 course_key = CourseLocator.from_string(
                     event['context']['course_id']
@@ -58,7 +58,7 @@ class SubmissionRecorder(BaseBackend):
                 answer_id = event['event']['answers'][submission_key]
 
                 if not RapidResponseBlockStatus.objects.filter(
-                    usage_key=problem_id,
+                    problem_usage_key=problem_id,
                     course_key=course_key,
                     open=True
                 ).exists():
@@ -69,14 +69,14 @@ class SubmissionRecorder(BaseBackend):
                 with transaction.atomic():
                     RapidResponseSubmission.objects.filter(
                         user_id=user_id,
-                        course_id=course_key,
-                        problem_id=problem_id,
+                        course_key=course_key,
+                        problem_usage_key=problem_id,
                     ).delete()
 
                     RapidResponseSubmission.objects.create(
                         user_id=user_id,
-                        course_id=course_key,
-                        problem_id=problem_id,
+                        course_key=course_key,
+                        problem_usage_key=problem_id,
                         event=event,
                         answer_id=answer_id,
                         answer_text=answer_text,

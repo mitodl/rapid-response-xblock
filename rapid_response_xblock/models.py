@@ -26,18 +26,19 @@ class RapidResponseSubmission(TimeStampedModel):
         null=True,
         db_index=True,
     )
-    problem_id = UsageKeyField(db_index=True, max_length=255)
-    course_id = CourseKeyField(db_index=True, max_length=255)
+    problem_usage_key = UsageKeyField(db_index=True, max_length=255)
+    course_key = CourseKeyField(db_index=True, max_length=255)
     answer_id = models.CharField(null=True, max_length=255)
     answer_text = models.CharField(null=True, max_length=4096)
     event = JSONField()
 
     def __str__(self):
         return (
-            "user={user} problem_id={problem_id} "
+            "user={user} problem_usage_key={problem_usage_key} course_key={course_key} "
             "answer_id={answer_id}".format(
                 user=self.user,
-                problem_id=self.problem_id,
+                problem_usage_key=self.problem_usage_key,
+                course_key=self.course_key,
                 answer_id=self.answer_id,
             )
         )
@@ -49,15 +50,15 @@ class RapidResponseBlockStatus(models.Model):
     Indicates whether a rapid-response-enabled XBlock for a given course is "open" or not
     ("open" = set to collect student responses for the block in real time)
     """
-    usage_key = UsageKeyField(max_length=255, db_index=True)
+    problem_usage_key = UsageKeyField(max_length=255, db_index=True)
     course_key = CourseKeyField(max_length=255, db_index=True)
     open = models.BooleanField(default=False, null=False)
 
     def __str__(self):
         return (
-            "open={open} usage_key={usage_key} course_key={course_key}".format(
+            "open={open} problem_usage_key={problem_usage_key} course_key={course_key}".format(
                 open=self.open,
-                usage_key=self.usage_key,
+                problem_usage_key=self.problem_usage_key,
                 course_key=self.course_key
             )
         )

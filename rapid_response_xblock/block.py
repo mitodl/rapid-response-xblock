@@ -101,7 +101,7 @@ class RapidResponseAside(XBlockAside):
         """
         with transaction.atomic():
             status, _ = RapidResponseBlockStatus.objects.get_or_create(
-                usage_key=self.wrapped_block_usage_key,
+                problem_usage_key=self.wrapped_block_usage_key,
                 course_key=self.course_key
             )
             status.open = not bool(status.open)
@@ -132,7 +132,7 @@ class RapidResponseAside(XBlockAside):
         Gets the template context object for the aside when it's first loaded
         """
         status = RapidResponseBlockStatus.objects.filter(
-            usage_key=self.wrapped_block_usage_key,
+            problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key
         ).first()
         is_open = False if not status else status.open
@@ -148,14 +148,14 @@ class RapidResponseAside(XBlockAside):
         Returns student responses for rapid-response-enabled block
         """
         status = RapidResponseBlockStatus.objects.filter(
-            usage_key=self.wrapped_block_usage_key,
+            problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key
         ).first()
         is_open = False if not status else status.open
         responses = list(
             RapidResponseSubmission.objects.filter(
-                problem_id=self.wrapped_block_usage_key,
-                course_id=self.course_key,
+                problem_usage_key=self.wrapped_block_usage_key,
+                course_key=self.course_key,
             ).values('id', 'answer_id', 'answer_text')
         )
         return Response(json_body={
