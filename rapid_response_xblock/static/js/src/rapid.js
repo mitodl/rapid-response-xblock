@@ -132,7 +132,12 @@
      * @returns {Array} An array of integers within the domain used for tick values on the y axis
      */
     function makeIntegerTicks(domainMax) {
+      if (isNaN(domainMax)) {
+        // May happen when responses are empty
+        return [];
+      }
       var increment = Math.ceil(domainMax / ChartSettings.numYAxisTicks);
+      console.log("domainMax", domainMax, increment);
       return _.range(0, domainMax, increment);
     }
 
