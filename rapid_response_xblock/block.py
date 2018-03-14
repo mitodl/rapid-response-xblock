@@ -89,7 +89,7 @@ class RapidResponseAside(XBlockAside):
         )
         fragment.add_css(get_resource_bytes("static/css/rapid.css"))
         fragment.add_javascript(get_resource_bytes("static/js/src/rapid.js"))
-        fragment.add_javascript(get_resource_bytes("static/js/src/d3.v4.min.js"))
+        fragment.add_javascript(get_resource_bytes("static/js/lib/d3.v4.min.js"))
         fragment.initialize_js("RapidResponseAsideInit")
         return fragment
 
