@@ -174,8 +174,8 @@
         return item.answer_id;
       });
       var histogramLookup = {};
-      histogram.forEach(function(response) {
-        histogramLookup[response.answer_id] = response;
+      histogram.forEach(function(item) {
+        histogramLookup[item.answer_id] = item;
       });
 
       // Add answer ids to the color domain if they don't already exist
@@ -189,8 +189,8 @@
       // Create y scale to map response count to y coordinate for the top of the bar.
       var y = d3.scaleLinear().rangeRound([ChartSettings.height, 0]).domain(
         // pick the maximum count so we know how high the bar chart should go
-        [0, d3.max(histogram, function(value) {
-          return value.count;
+        [0, d3.max(histogram, function(item) {
+          return item.count;
         })]
       );
       // Create a color scale similar to the x scale to provide colors for each bar
