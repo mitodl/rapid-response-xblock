@@ -10,7 +10,7 @@
     var $element = $(element);
 
     var rapidTopLevelSel = '.rapid-response-block';
-    var rapidBlockContentSel = '#rapid-response-content';
+    var rapidBlockContentSel = '.rapid-response-content';
     var toggleTemplate = _.template($(element).find("#rapid-response-toggle-tmpl").text());
 
     var chart, chartWidth, chartHeight, colorDomain;
@@ -49,7 +49,7 @@
     function initD3() {
       // This function is for creating and updating elements right after page load.
 
-      var svg = d3.select("#rapid-response-results").append("svg");
+      var svg = d3.select(element).select(".rapid-response-results").append("svg");
       // TODO: These values are guesses, maybe we want to calculate browser width/height? Not sure
       chartWidth = 1000;
       chartHeight = 500;

@@ -4,7 +4,7 @@ button.problem-status-toggle:hover {
     box-shadow: none;
 }
 
-#rapid-response-content td, #rapid-response-content th {
+.rapid-response-content td, .rapid-response-content th {
     border: 1px solid black;
 }
 
