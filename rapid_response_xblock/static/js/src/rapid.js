@@ -21,8 +21,10 @@
       responses: []
     };
 
+    /**
+     * Render template
+     */
     function render() {
-      // Render template
       var $rapidBlockContent = $element.find(rapidBlockContentSel);
       $rapidBlockContent.html(toggleTemplate(state));
       renderD3(state);
@@ -51,7 +53,7 @@
     // This is a list of answer ids updated after each D3 update to keep track of the insertion order.
     var colorDomain;
 
-    // TODO: These values are guesses, maybe we want to calculate browser width/height? Not sure
+    // TODO: These values are guesses, maybe we want to calculate based on browser width/height? Not sure
     var ChartSettings = {
       width: 1000,
       height: 500,
@@ -65,9 +67,10 @@
       numYAxisTicks: 6
     };
 
+    /**
+     * Initialize grade histogram elements.
+     */
     function initD3() {
-      // Initialize grade histogram elements.
-
       var svg = d3.select(element).select(rapidBlockResultsSel).append("svg");
 
       svg.attr("width", ChartSettings.width + ChartSettings.left + ChartSettings.right);
@@ -92,9 +95,14 @@
       colorDomain = [];
     }
 
+    /**
+     * Calculate count data for each answer id for all responses.
+     * The returned array is sorted by lowercase answer id.
+     *
+     * @param {Array} responses The response data as it comes from the REST API
+     * @returns {Array} Aggregated responses. There is one response item per answer id and it includes the count
+     */
     function makeHistogram(responses) {
-      // Calculate count data for each answer id for all responses.
-      // The returned array is sorted by lowercase answer id.
       var lookup = {};
       var uniqueResponses = [];
       responses.forEach(function(response) {
@@ -118,16 +126,26 @@
       });
     }
 
+    /**
+     * Given the domain limits return some tick values, equally spaced out, all integers.
+     * @param {number} domainMax The maximum domain value (the minimum is always 0).
+     * @returns {Array} An array of integers within the domain used for tick values on the y axis
+     */
     function makeIntegerTicks(domainMax) {
-      // Given the domain limits return 6 or so tick values, equally spaced out, all integers.
       var increment = Math.ceil(domainMax / ChartSettings.numYAxisTicks);
       return _.range(0, domainMax, increment);
     }
 
-    function wrapText(textSelector, barWidth, oldText) {
-      // see https://bl.ocks.org/mbostock/7555321 for inspiration
-      // SVG doesn't have a capability to wrap text except for foreignObject which is not supported in IE11.
-      // So we have to calculate it manually
+    /**
+     * SVG doesn't have a capability to wrap text except for foreignObject which is not supported in IE11.
+     * So we have to calculate it manually for X axis tick labels.
+     * See https://bl.ocks.org/mbostock/7555321 for inspiration
+     *
+     * @param {selector} textSelector A D3 selector for x axis text elements
+     * @param {number} barWidth The width of a bar
+     * @param {string} text The text for the axis label
+     */
+    function wrapText(textSelector, barWidth, text) {
       textSelector.each(function() {
         var root = d3.select(this);
 
@@ -135,21 +153,25 @@
         var rootDy = parseFloat(root.attr("dy"));
 
         root.selectAll("tspan").remove();
-        var words = oldText.split(/\s+/);
+        var words = text.split(/\s+/);
         var tspan = root.append("tspan").attr("x", 0).attr("y", rootY).attr("dy", rootDy + "em");
 
         var currentLine = 0;
         var lineHeight = 1.1;
         words.forEach(function(word) {
           if (!word) {
+            // May happen if the input text is empty.
             return;
           }
 
-          var oldText = tspan.text();
-          tspan.text(oldText + " " + word);
+          var tspanText = tspan.text();
+          tspan.text(tspanText + " " + word);
           if (tspan.node().getComputedTextLength() > barWidth) {
+            // The new word would go beyond the bar width boundary,
+            // so change tspan back to its old text and create one with the
+            // new word on a new line.
             currentLine++;
-            tspan.text(oldText + " ");
+            tspan.text(tspanText + " ");
             tspan = root.append("tspan").attr("x", 0).attr("y", rootY).attr(
               "dy", ((currentLine * lineHeight) + rootDy) + "em"
             ).text(word);
@@ -158,9 +180,12 @@
       });
     }
 
+    /**
+     * Renders the graph and adjusts axes based on responses to the given problem.
+     *
+     * @param {Object} state The current rendering state
+     */
     function renderD3(state) {
-      // Renders the graph and adjusts axes based on responses to the given problem.
-
       var message = chart.select(".message");
       var responses = state.responses;
       if (responses.length === 0) {
@@ -264,6 +289,10 @@
         );
     }
 
+    /**
+     * Read from the responses API and put the new value in the rendering state.
+     * If the problem is open, schedule another poll using this function.
+     */
     function pollForResponses() {
       $.get(responsesUrl).then(function(newState) {
         state = Object.assign({}, state, newState);
