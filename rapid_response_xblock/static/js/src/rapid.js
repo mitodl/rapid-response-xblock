@@ -11,6 +11,7 @@
 
     var rapidTopLevelSel = '.rapid-response-block';
     var rapidBlockContentSel = '.rapid-response-content';
+    var rapidBlockResultsSel = '.rapid-response-results';
     var toggleTemplate = _.template($(element).find("#rapid-response-toggle-tmpl").text());
 
     // default values
@@ -67,7 +68,7 @@
     function initD3() {
       // Initialize grade histogram elements.
 
-      var svg = d3.select(element).select(".rapid-response-results").append("svg");
+      var svg = d3.select(element).select(rapidBlockResultsSel).append("svg");
 
       svg.attr("width", ChartSettings.width + ChartSettings.left + ChartSettings.right);
       svg.attr("height", ChartSettings.height + ChartSettings.top + ChartSettings.bottom);
