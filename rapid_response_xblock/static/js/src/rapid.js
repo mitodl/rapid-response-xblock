@@ -13,8 +13,6 @@
     var rapidBlockContentSel = '.rapid-response-content';
     var toggleTemplate = _.template($(element).find("#rapid-response-toggle-tmpl").text());
 
-    var chart, chartWidth, chartHeight, colorDomain;
-
     // default values
     var state = {
       is_open: false,
@@ -46,31 +44,46 @@
       });
     }
 
+    // Chart D3 element
+    var chart;
+
+    // This is a list of answer ids updated after each D3 update to keep track of the insertion order.
+    var colorDomain;
+
+    // TODO: These values are guesses, maybe we want to calculate browser width/height? Not sure
+    var ChartSettings = {
+      width: 1000,
+      height: 500,
+      top: 100,
+      left: 80,
+      bottom: 200,
+      right: 80,
+      messageLeft: 150,
+      messageBottom: 100,
+      noDataMessage: "No data available",
+      numYAxisTicks: 6
+    };
+
     function initD3() {
       // This function is for creating and updating elements right after page load.
 
       var svg = d3.select(element).select(".rapid-response-results").append("svg");
-      // TODO: These values are guesses, maybe we want to calculate browser width/height? Not sure
-      chartWidth = 1000;
-      chartHeight = 500;
-      var marginTop = 100;
-      var marginLeft = 80;
-      var marginBottom = 200;
-      var marginRight = 80;
 
-      svg.attr("width", chartWidth + marginLeft + marginRight);
-      svg.attr("height", chartHeight + marginTop + marginBottom);
+      svg.attr("width", ChartSettings.width + ChartSettings.left + ChartSettings.right);
+      svg.attr("height", ChartSettings.height + ChartSettings.top + ChartSettings.bottom);
       // The g element has a little bit of padding so the x and y axes can surround it
       chart = svg.append("g");
-      chart.attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
+      chart.attr("transform", "translate(" + ChartSettings.left + "," + ChartSettings.top + ")");
 
       // create x and y axes
-      chart.append("g").attr("class", "xaxis").attr("transform", "translate(0," + chartHeight + ")");
+      chart.append("g").attr("class", "xaxis").attr("transform", "translate(0," + ChartSettings.height + ")");
       chart.append("g").attr("class", "yaxis");
 
       // messages we may want to overlay on the chart
       chart.append("text").attr(
-        "transform", "translate(" + ((chartWidth / 2) - 150) + ", " + (chartHeight - 100) + ")"
+        "transform",
+        "translate(" + ((ChartSettings.width / 2) - ChartSettings.messageLeft) +
+        ", " + (ChartSettings.height - ChartSettings.messageBottom) + ")"
       ).classed("message hidden", true);
 
       // This is a list of answer ids, kept in order that they appear in the results instead of sorted by answer id.
@@ -110,7 +123,7 @@
       var lookup = {};
       var maxCount = domain.domain()[1];
       if (!isNaN(maxCount)) {
-        var numTicks = 6;
+        var numTicks = ChartSettings.numYAxisTicks;
         var tickIncrement = Math.ceil(maxCount / numTicks);
         for (var tickCount = 0; tickCount < numTicks; ++tickCount) {
           var tick = tickCount * tickIncrement;
@@ -163,7 +176,7 @@
       var message = chart.select(".message");
       var responses = state.responses;
       if (responses.length === 0) {
-        message.text("No data available").classed("hidden", false);
+        message.text(ChartSettings.noDataMessage).classed("hidden", false);
       } else {
         message.classed("hidden", true);
       }
@@ -185,13 +198,13 @@
 
       // Create x scale to map answer ids to bar x coordinate locations. Note that
       // histogram was previously sorted in order of the lowercase answer id.
-      var x = d3.scaleBand().rangeRound([0, chartWidth]).padding(0.1).domain(
+      var x = d3.scaleBand().rangeRound([0, ChartSettings.width]).padding(0.1).domain(
         histogram.map(function(value) {
           return value.answer_id;
         })
       );
       // Create y scale to map response count to y coordinate for the top of the bar.
-      var y = d3.scaleLinear().rangeRound([chartHeight, 0]).domain(
+      var y = d3.scaleLinear().rangeRound([ChartSettings.height, 0]).domain(
         // pick the maximum count so we know how high the bar chart should go
         [0, d3.max(histogram, function(value) {
           return value.count;
@@ -217,7 +230,7 @@
         // where new bars appear to zap in out of nowhere.
         .attr("y", function(response) { return y(response.count); })
         .attr("height", function(response) {
-          return chartHeight - y(response.count);
+          return ChartSettings.height - y(response.count);
         })
         .merge(bars)
         // Now, for all bars, set the width and x values. No transition is applied for the x axis,
@@ -232,7 +245,7 @@
         // Set a transition for the y axis for bars so that we have a slick update.
         .attr("y", function(response) { return y(response.count); })
         .attr("height", function(response) {
-          return chartHeight - y(response.count);
+          return ChartSettings.height - y(response.count);
         });
 
       // If the responses disappear from the API such that there is no information for the bar
