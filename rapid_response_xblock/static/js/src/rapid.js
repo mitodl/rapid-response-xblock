@@ -170,25 +170,21 @@
 
       // Compute responses into information suitable for a bar graph.
       var histogram = makeHistogram(responses);
+      var histogramAnswerIds = histogram.map(function(item) {
+        return item.answer_id;
+      });
       var histogramLookup = {};
       histogram.forEach(function(response) {
         histogramLookup[response.answer_id] = response;
       });
 
       // Add answer ids to the color domain if they don't already exist
-      histogram.forEach(function(response) {
-        var answerId = response.answer_id;
-        if (!_.includes(colorDomain, answerId)) {
-          colorDomain.push(answerId);
-        }
-      });
+      colorDomain = _.union(colorDomain, histogramAnswerIds);
 
       // Create x scale to map answer ids to bar x coordinate locations. Note that
       // histogram was previously sorted in order of the lowercase answer id.
       var x = d3.scaleBand().rangeRound([0, ChartSettings.width]).padding(0.1).domain(
-        histogram.map(function(value) {
-          return value.answer_id;
-        })
+        histogramAnswerIds
       );
       // Create y scale to map response count to y coordinate for the top of the bar.
       var y = d3.scaleLinear().rangeRound([ChartSettings.height, 0]).domain(
