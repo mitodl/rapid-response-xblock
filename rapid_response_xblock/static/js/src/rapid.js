@@ -24,7 +24,7 @@
       // Render template
       var $rapidBlockContent = $element.find(rapidBlockContentSel);
       $rapidBlockContent.html(toggleTemplate(state));
-      renderD3();
+      renderD3(state);
 
       $rapidBlockContent.find('.problem-status-toggle').click(function(e) {
         $.get(toggleStatusUrl).then(
@@ -117,23 +117,10 @@
       });
     }
 
-    function makeIntegerTicks(domain) {
+    function makeIntegerTicks(domainMax) {
       // Given the domain limits return 6 or so tick values, equally spaced out, all integers.
-      var tickValues = [];
-      var lookup = {};
-      var maxCount = domain.domain()[1];
-      if (!isNaN(maxCount)) {
-        var numTicks = ChartSettings.numYAxisTicks;
-        var tickIncrement = Math.ceil(maxCount / numTicks);
-        for (var tickCount = 0; tickCount < numTicks; ++tickCount) {
-          var tick = tickCount * tickIncrement;
-          if (!(tick in lookup)) {
-            lookup[tick] = true;
-            tickValues.push(tick);
-          }
-        }
-      }
-      return tickValues;
+      var increment = Math.ceil(domainMax / ChartSettings.numYAxisTicks);
+      return _.range(0, domainMax, increment);
     }
 
     function wrapText(textSelector, barWidth, oldText) {
@@ -170,7 +157,7 @@
       });
     }
 
-    function renderD3() {
+    function renderD3(state) {
       // Initialize grade histogram elements.
 
       var message = chart.select(".message");
@@ -272,7 +259,7 @@
       // Update the Y axis.
       // By default it assumes a continuous scale, but we just want to show integers so we need to create the ticks
       // manually.
-      var yTickValues = makeIntegerTicks(y);
+      var yTickValues = makeIntegerTicks(y.domain()[1]);
       chart.select(".yaxis")
         .transition() // transition to match the bar update
         .call(
