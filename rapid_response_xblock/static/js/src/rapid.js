@@ -158,7 +158,7 @@
     }
 
     function renderD3() {
-      // This function should be called whenever the response information changes.
+      // Initialize grade histogram elements.
 
       var message = chart.select(".message");
       var responses = state.responses;
