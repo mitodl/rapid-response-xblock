@@ -65,7 +65,7 @@
     };
 
     function initD3() {
-      // This function is for creating and updating elements right after page load.
+      // Initialize grade histogram elements.
 
       var svg = d3.select(element).select(".rapid-response-results").append("svg");
 
@@ -158,7 +158,7 @@
     }
 
     function renderD3(state) {
-      // Initialize grade histogram elements.
+      // Renders the graph and adjusts axes based on responses to the given problem.
 
       var message = chart.select(".message");
       var responses = state.responses;
