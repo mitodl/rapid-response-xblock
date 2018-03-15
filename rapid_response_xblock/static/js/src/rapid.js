@@ -103,27 +103,17 @@
      * @returns {Array} Aggregated responses. There is one response item per answer id and it includes the count
      */
     function makeHistogram(responses) {
-      var lookup = {};
-      var uniqueResponses = [];
-      responses.forEach(function(response) {
-        if (!(response.answer_id in lookup)) {
-          lookup[response.answer_id] = 1;
-          uniqueResponses.push(response);
-        } else {
-          lookup[response.answer_id] += 1;
-        }
-      });
-      uniqueResponses = _.sortBy(uniqueResponses, function(response) {
-        return response.answer_id.toLowerCase();
-      });
-
-      return uniqueResponses.map(function(response) {
-        return {
-          answer_id: response.answer_id,
-          answer_text: response.answer_text,
-          count: lookup[response.answer_id]
-        };
-      });
+      return _.chain(responses)
+        .groupBy('answer_id')
+        .map(function(responses, answer_id) {
+          return {
+            'answer_id': answer_id,
+            'answer_text': responses[0].answer_text,
+            'count': responses.length
+          };
+        })
+        .sortBy('answer_id')
+        .value();
     }
 
     /**
