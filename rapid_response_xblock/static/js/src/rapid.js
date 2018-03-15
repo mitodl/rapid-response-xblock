@@ -186,7 +186,7 @@
 
       // Compute responses into information suitable for a bar graph.
       var histogram = makeHistogram(responses);
-      var histogramAnswerIds = histogram.map(_.pluck(histogram, 'answer_id'));
+      var histogramAnswerIds = _.pluck(histogram, 'answer_id');
       var histogramLookup = _.object(_.map(histogram, function(item) {
         return [item.answer_id, item];
       }));
