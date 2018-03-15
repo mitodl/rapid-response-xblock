@@ -201,9 +201,7 @@
 
       // Compute responses into information suitable for a bar graph.
       var histogram = makeHistogram(responses);
-      var histogramAnswerIds = histogram.map(function(item) {
-        return item.answer_id;
-      });
+      var histogramAnswerIds = histogram.map(_.pluck(histogram, 'answer_id'));
       var histogramLookup = {};
       histogram.forEach(function(item) {
         histogramLookup[item.answer_id] = item;
