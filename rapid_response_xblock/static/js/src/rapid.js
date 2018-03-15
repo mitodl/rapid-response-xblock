@@ -201,10 +201,9 @@
       // Compute responses into information suitable for a bar graph.
       var histogram = makeHistogram(responses);
       var histogramAnswerIds = histogram.map(_.pluck(histogram, 'answer_id'));
-      var histogramLookup = {};
-      histogram.forEach(function(item) {
-        histogramLookup[item.answer_id] = item;
-      });
+      var histogramLookup = _.object(_.map(histogram, function(item) {
+        return [item.answer_id, item];
+      }));
 
       // Add answer ids to the color domain if they don't already exist
       colorDomain = _.union(colorDomain, histogramAnswerIds);
