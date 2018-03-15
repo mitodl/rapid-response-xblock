@@ -132,10 +132,6 @@
      * @returns {Array} An array of integers within the domain used for tick values on the y axis
      */
     function makeIntegerTicks(domainMax) {
-      if (isNaN(domainMax)) {
-        // May happen when responses are empty
-        return [];
-      }
       var increment = Math.ceil(domainMax / ChartSettings.numYAxisTicks);
       return _.range(0, domainMax, increment);
     }
@@ -282,7 +278,9 @@
       // Update the Y axis.
       // By default it assumes a continuous scale, but we just want to show integers so we need to create the ticks
       // manually.
-      var yTickValues = makeIntegerTicks(y.domain()[1]);
+      var yDomainMax = y.domain()[1];
+      // May be NaN if the responses are empty
+      var yTickValues = !isNaN(yDomainMax) ? makeIntegerTicks(y.domain()[1]) : [];
       chart.select(".yaxis")
         .transition() // transition to match the bar update
         .call(
