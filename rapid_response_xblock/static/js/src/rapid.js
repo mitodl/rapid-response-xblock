@@ -137,7 +137,6 @@
         return [];
       }
       var increment = Math.ceil(domainMax / ChartSettings.numYAxisTicks);
-      console.log("domainMax", domainMax, increment);
       return _.range(0, domainMax, increment);
     }
 
