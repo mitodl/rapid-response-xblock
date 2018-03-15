@@ -1,5 +1,7 @@
 <div class="rapid-response-block" data-staff="{{ is_staff }}" data-open="{{ is_open }}">
-  <div id="rapid-response-content">
+  <div class="rapid-response-content">
+  </div>
+  <div class="rapid-response-results">
   </div>
 
   <script type="text/template" id="rapid-response-toggle-tmpl">
@@ -9,26 +11,6 @@
           <%= is_open ? "Close" : "Open" %> Problem For Live Responses
         </button>
       </p>
-      <% if (responses) { %>
-        <table>
-          <tr>
-            <th>Primary key</th>
-            <th>Answer id</th>
-            <th>Answer text</th>
-          </tr>
-          <% _.forEach(responses, function(response) { %>
-          <tr>
-            <td><%= response.id %></td>
-            <td><%= response.answer_id %></td>
-            <td><%= response.answer_text %></td>
-          </tr>
-          <% }) %>
-        </table>
-      <% } else { %>
-        <p>
-          No responses to display
-        </p>
-      <% } %>
     <% } %>
   </script>
 </div>

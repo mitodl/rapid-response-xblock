@@ -30,7 +30,7 @@ def get_resource_bytes(path):
         unicode: The unicode contents of the resource at the given path
     """
     resource_contents = pkg_resources.resource_string(__name__, path)
-    return unicode(resource_contents)
+    return resource_contents.decode('utf-8')
 
 
 def render_template(template_path, context=None):
@@ -89,6 +89,7 @@ class RapidResponseAside(XBlockAside):
         )
         fragment.add_css(get_resource_bytes("static/css/rapid.css"))
         fragment.add_javascript(get_resource_bytes("static/js/src/rapid.js"))
+        fragment.add_javascript(get_resource_bytes("static/js/lib/d3.v4.min.js"))
         fragment.initialize_js("RapidResponseAsideInit")
         return fragment
 
