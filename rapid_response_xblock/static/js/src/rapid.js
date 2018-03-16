@@ -19,7 +19,7 @@
     var state = {
       is_open: false,
       is_staff: false,
-      responses: []
+      histogram: []
     };
 
     /**
@@ -33,7 +33,7 @@
       $rapidBlockContent.find(problemStatusBtnSel).click(function() {
         $.post(toggleStatusUrl).then(
           function(newState) {
-            state = Object.assign({}, state, newState);
+            state = _.assign({}, state, newState);
             render();
 
             if (state.is_open) {
@@ -47,9 +47,6 @@
     // Chart D3 element
     var chart;
 
-    // This is a list of answer ids updated after each D3 update to keep track of the insertion order.
-    var colorDomain;
-
     // TODO: These values are guesses, maybe we want to calculate based on browser width/height? Not sure
     var ChartSettings = {
       width: 1000,
@@ -58,9 +55,6 @@
       left: 80,
       bottom: 200,
       right: 80,
-      messageLeft: 150,
-      messageBottom: 100,
-      noDataMessage: "No data available",
       numYAxisTicks: 6
     };
 
@@ -79,38 +73,6 @@
       // create x and y axes
       chart.append("g").attr("class", "xaxis").attr("transform", "translate(0," + ChartSettings.height + ")");
       chart.append("g").attr("class", "yaxis");
-
-      // messages we may want to overlay on the chart
-      chart.append("text").attr(
-        "transform",
-        "translate(" + ((ChartSettings.width / 2) - ChartSettings.messageLeft) +
-        ", " + (ChartSettings.height - ChartSettings.messageBottom) + ")"
-      ).classed("message hidden", true);
-
-      // This is a list of answer ids, kept in order that they appear in the results instead of sorted by answer id.
-      // Keeping the order as they are inserted is important so that the colors don't change as new answer ids appear.
-      colorDomain = [];
-    }
-
-    /**
-     * Calculate count data for each answer id for all responses.
-     * The returned array is sorted by lowercase answer id.
-     *
-     * @param {Array} responses The response data as it comes from the REST API
-     * @returns {Array} Aggregated responses. There is one response item per answer id and it includes the count
-     */
-    function makeHistogram(responses) {
-      return _.chain(responses)
-        .groupBy('answer_id')
-        .map(function(responses, answer_id) {
-          return {
-            'answer_id': answer_id,
-            'answer_text': responses[0].answer_text,
-            'count': responses.length
-          };
-        })
-        .sortBy('answer_id')
-        .value();
     }
 
     /**
@@ -120,7 +82,7 @@
      */
     function makeIntegerTicks(domainMax) {
       var increment = Math.ceil(domainMax / ChartSettings.numYAxisTicks);
-      return _.range(0, domainMax, increment);
+      return _.range(0, domainMax + 1, increment);
     }
 
     /**
@@ -173,23 +135,13 @@
      * @param {Object} state The current rendering state
      */
     function renderD3(state) {
-      var message = chart.select(".message");
-      var responses = state.responses;
-      if (responses.length === 0) {
-        message.text(ChartSettings.noDataMessage).classed("hidden", false);
-      } else {
-        message.classed("hidden", true);
-      }
+      var histogram = state.histogram;
 
       // Compute responses into information suitable for a bar graph.
-      var histogram = makeHistogram(responses);
       var histogramAnswerIds = _.pluck(histogram, 'answer_id');
       var histogramLookup = _.object(_.map(histogram, function(item) {
         return [item.answer_id, item];
       }));
-
-      // Add answer ids to the color domain if they don't already exist
-      colorDomain = _.union(colorDomain, histogramAnswerIds);
 
       // Create x scale to map answer ids to bar x coordinate locations. Note that
       // histogram was previously sorted in order of the lowercase answer id.
@@ -204,7 +156,7 @@
         })]
       );
       // Create a color scale similar to the x scale to provide colors for each bar
-      var color = d3.scaleOrdinal(d3.schemeCategory10).domain(colorDomain);
+      var color = d3.scaleOrdinal(d3.schemeCategory10).domain(histogramAnswerIds);
 
       // The D3 data join. This matches the histogram data to the rect elements
       // (there is a __data__ attribute on each rect keeping track of this). Also tell D3 to use the answer_id to make
@@ -281,7 +233,7 @@
      */
     function pollForResponses() {
       $.get(responsesUrl).then(function(newState) {
-        state = Object.assign({}, state, newState);
+        state = _.assign({}, state, newState);
         render();
         if (state.is_open) {
           setTimeout(pollForResponses, POLLING_MILLIS);
@@ -294,7 +246,7 @@
 
     $(function($) { // onLoad
       var block = $element.find(rapidTopLevelSel);
-      Object.assign(state, {
+      _.assign(state, {
         is_open: block.attr('data-open') === 'True',
         is_staff: block.attr('data-staff') === 'True'
       });

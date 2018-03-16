@@ -1,8 +1,9 @@
 """Utility functions and classes for the rapid response test suite"""
+from contextlib import contextmanager
 import os
 import shutil
 import tempfile
-from mock import Mock
+from mock import Mock, patch
 
 from django.http.request import HttpRequest
 
@@ -115,3 +116,28 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
             xml_dir,
         )
         return courses[0]
+
+    @contextmanager
+    def patch_modulestore(self):
+        store = modulestore()
+
+        def wrap_runtime(*args, **kwargs):
+            """Alter modulestore to set xmodule_runtime and xmodule_runtime.xmodule_instance"""
+            block = store.get_item(*args, **kwargs)
+            block.xmodule_runtime = self.runtime
+
+            # Copied this from xmodule.xmodule.x_module._xmodule
+            # When it executes there it raises a scope error, but here it's fine. Not sure what the difference is
+            block.xmodule_runtime.xmodule_instance = block.xmodule_runtime.construct_xblock_from_class(
+                block.module_class,
+                descriptor=block,
+                scope_ids=block.scope_ids,
+                field_data=block._field_data,
+                for_parent=block.get_parent()
+            )
+
+            return block
+
+        with patch('rapid_response_xblock.block.modulestore', autospec=True) as modulestore_mock:
+            modulestore_mock.return_value.get_item.side_effect = wrap_runtime
+            yield modulestore_mock

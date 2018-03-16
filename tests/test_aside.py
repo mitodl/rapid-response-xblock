@@ -2,9 +2,15 @@
 from ddt import data, ddt, unpack
 from mock import Mock, patch
 
+from courseware.module_render import handle_xblock_callback
 from django.contrib.auth.models import User
+from django.http.request import HttpRequest
+from django.test.client import Client, RequestFactory
 from opaque_keys.edx.keys import UsageKey
+from opaque_keys.edx.locator import BlockUsageLocator
+from openedx.core.lib.xblock_utils import is_xblock_aside, get_aside_from_xblock
 import pytest
+from xmodule.modulestore.django import modulestore
 
 from rapid_response_xblock.block import RapidResponseAside
 from rapid_response_xblock.models import (
@@ -23,7 +29,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
     def setUp(self):
         super(RapidResponseAsideTests, self).setUp()
         self.aside_usage_key = UsageKey.from_string(
-            "aside-usage-v2:block-v1$:ReplaceStatic+ReplaceStatic+2018_T1+type@problem+block"
+            "aside-usage-v2:block-v1$:SGAU+SGA101+2017_SGA+type@problem+block"
             "@2582bbb68672426297e525b49a383eb8::rapid_response_xblock"
         )
         self.scope_ids = make_scope_ids(self.runtime, self.aside_usage_key)
@@ -107,7 +113,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         """
         Test that only staff users should access the API
         """
-        with patch.object(self.aside_instance, 'is_staff', return_value=is_staff):
+        with patch.object(self.aside_instance, 'is_staff', return_value=is_staff), self.patch_modulestore():
             resp = self.aside_instance.responses()
         assert resp.status_code == expected_status
 
@@ -122,7 +128,8 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             open=is_open,
         )
 
-        resp = self.aside_instance.responses()
+        with self.patch_modulestore():
+            resp = self.aside_instance.responses()
         assert resp.status_code == 200
         assert resp.json['is_open'] == is_open
 
@@ -131,31 +138,50 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         """
         Test that the responses API will show recorded events during the open period
         """
+        # The testing modulestore expects deprecated keys for some reason
+        course_id = self.aside_instance.course_key.replace(deprecated=True)
         problem_id = self.aside_instance.wrapped_block_usage_key
-        course_id = self.aside_instance.course_key
+        # replace(deprecated=True) doesn't work for BlockUsageLocator
+        problem_id = BlockUsageLocator(course_id, problem_id.block_type, problem_id.block_id, deprecated=True)
 
-        submissions = []
-        for n in range(5):
-            username = 'user_{}'.format(n)
-            email = 'user{}@email.com'.format(n)
-            answer_id = 'answer_{}'.format(n)
-            answer_text = 'Answer #{}'.format(n)
+        answer_data = [
+            {
+                'answer_id': 'choice_0',
+                'answer_text': 'an incorrect answer',
+            },
+            {
+                'answer_id': 'choice_1',
+                'answer_text': 'the correct answer',
+            },
+            {
+                'answer_id': 'choice_2',
+                'answer_text': 'a different incorrect answer',
+            },
+        ]
+        counts = {
+            'choice_0': 5,
+            'choice_1': 4,
+            'choice_2': 3,
+        }
 
-            user = User.objects.create(
-                username=username,
-                email=email,
-            )
+        for item in answer_data:
+            for n in range(counts[item['answer_id']]):
+                username = 'user_{}_{}'.format(n, item['answer_id'])
+                email = 'user{}{}@email.com'.format(n, item['answer_id'])
+                user = User.objects.create(
+                    username=username,
+                    email=email,
+                )
 
-            submissions.append(
                 RapidResponseSubmission.objects.create(
+                    # For some reason the modulestore looks for a deprecated course key
                     course_key=course_id,
                     problem_usage_key=problem_id,
                     user_id=user.id,
-                    answer_id=answer_id,
-                    answer_text=answer_text,
+                    answer_id=item['answer_id'],
+                    answer_text=item['answer_text'],
                     event={}
                 )
-            )
 
         # create another submission which has a different problem id and won't be included in the results
         user = User.objects.create(
@@ -166,17 +192,28 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             course_key=course_id,
             problem_usage_key=UsageKey.from_string(unicode(problem_id) + "extra"),
             user_id=user.id,
-            answer_id='answer_0',
-            answer_text='Answer #0',
+            answer_id=answer_data[0]['answer_id'],
+            answer_text=answer_data[0]['answer_text'],
             event={}
         )
 
-        resp = self.aside_instance.responses()
+        request = RequestFactory().request()
+        request.user = self.instructor
+        request.session = request.environ
+        store = modulestore()
+        problem = store.get_item(problem_id)
+        problem.runtime = self.runtime
+        problem.xmodule_runtime = self.runtime
+        aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
+
+        with self.patch_modulestore():
+            resp = aside_block.responses()
+
         assert resp.status_code == 200
         assert resp.json['is_open'] is False
 
-        assert resp.json['responses'] == [{
-            'id': submission.id,
-            'answer_id': submission.answer_id,
-            'answer_text': submission.answer_text,
-        } for submission in submissions]
+        assert resp.json['histogram'] == [{
+            'count': counts[item['answer_id']],
+            'answer_id': item['answer_id'],
+            'answer_text': item['answer_text'],
+        } for item in answer_data]
