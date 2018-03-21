@@ -33,21 +33,31 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         )
 
     @data(*[
-        ['[RAPID]', True],
-        ['block without rapid response', False],
+        [True, True],
+        [False, False],
     ])
     @unpack
-    def test_student_view(self, display_name, should_render_aside):
+    def test_student_view(self, enabled_value, should_render_aside):
         """
         Test that the aside student view returns a fragment if the block is
         rapid-response-enabled
         """
-        mock_xblock = Mock(display_name=display_name)
-        fragment = self.aside_instance.student_view_aside(mock_xblock)
+        self.aside_instance.enabled = enabled_value
+        fragment = self.aside_instance.student_view_aside(Mock())
         # If the block is enabled for rapid response, it should return a fragment with
         # non-empty content and should specify a JS initialization function
         assert bool(fragment.content) is should_render_aside
         assert (fragment.js_init_fn == 'RapidResponseAsideInit') is should_render_aside
+
+    @data(True, False)
+    def test_studio_view(self, enabled_value):
+        """
+        Test that the aside studio view returns a fragment
+        """
+        self.aside_instance.enabled = enabled_value
+        fragment = self.aside_instance.studio_view_aside(Mock())
+        assert 'data-enabled="{}"'.format(enabled_value) in fragment.content
+        assert fragment.js_init_fn == 'RapidResponseAsideStudioInit'
 
     def test_toggle_block_open(self):
         """Test that toggle_block_open_status changes the status of a rapid response block"""
@@ -64,6 +74,18 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         self.aside_instance.toggle_block_open_status(Mock())
         block_status.refresh_from_db()
         assert block_status.open is False
+
+    def test_toggle_block_enabled(self):
+        """
+        Test that toggle_block_enabled changes 'enabled' field value
+        and returns an appropriate response
+        """
+        # Test that the default value is False
+        assert self.aside_instance.enabled is False
+        for expected_enabled_value in [True, False]:
+            resp = self.aside_instance.toggle_block_enabled(Mock())
+            assert self.aside_instance.enabled is expected_enabled_value
+            assert resp.json['is_enabled'] == self.aside_instance.enabled
 
     @data(*[
         [True, 200],

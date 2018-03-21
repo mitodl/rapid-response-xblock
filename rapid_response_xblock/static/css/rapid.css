@@ -1,3 +1,11 @@
+.xblock-editor .rapid-response-block {
+    padding: 20px;
+}
+
+.xblock-editor .rapid-response-block label {
+    font-size: 14px;
+}
+
 button.problem-status-toggle:hover {
     background-color: #065683;
     background-image: none;

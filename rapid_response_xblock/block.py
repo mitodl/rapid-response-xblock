@@ -6,10 +6,12 @@ from collections import namedtuple
 import pkg_resources
 from django.db import transaction
 from django.template import Context, Template
+from django.utils.translation import ugettext_lazy as _
 from web_fragments.fragment import Fragment
 from webob.response import Response
 
 from xblock.core import XBlock, XBlockAside
+from xblock.fields import Scope, Boolean
 
 from rapid_response_xblock.models import (
     RapidResponseBlockStatus,
@@ -43,15 +45,7 @@ def render_template(template_path, context=None):
     return template.render(Context(context))
 
 
-# TODO: Decide on how we're going to enable specific blocks for rapid response
-def is_block_rapid_enabled(block):
-    """
-    Returns True if the given block is enabled for rapid response
-    """
-    return '[RAPID]' in block.display_name
-
-
-def staff_only_handler_method(handler_method):
+def staff_only(handler_method):
     """
     Wrapper that ensures a handler method is enabled for staff users only
     """
@@ -66,25 +60,39 @@ def staff_only_handler_method(handler_method):
     return wrapper
 
 
-TemplateContext = namedtuple('TemplateContext', ['is_staff', 'is_open'])
+def is_block_rapid_compatible(block):
+    return (
+        len(block.problem_types) == 1 and
+        'multiplechoiceresponse' in block.problem_types
+    )
+
+
+LmsTemplateContext = namedtuple('LmsTemplateContext', ['is_staff', 'is_open'])
 
 
 class RapidResponseAside(XBlockAside):
     """
     XBlock aside that enables rapid-response functionality for an XBlock
     """
+    enabled = Boolean(
+        display_name=_("Rapid response enabled status"),
+        default=False,
+        scope=Scope.settings,
+        help=_("Indicates whether or not a problem is enabled for rapid response")
+    )
+
     @XBlockAside.aside_for('student_view')
     def student_view_aside(self, block, context=None):  # pylint: disable=unused-argument
         """
         Renders the aside contents for the student view
         """
         fragment = Fragment(u'')
-        if not is_block_rapid_enabled(block):
+        if not self.is_staff() or not self.enabled:
             return fragment
         fragment.add_content(
             render_template(
                 "static/html/rapid.html",
-                self.get_initial_template_context()
+                self.get_lms_template_context()
             )
         )
         fragment.add_css(get_resource_bytes("static/css/rapid.css"))
@@ -93,8 +101,25 @@ class RapidResponseAside(XBlockAside):
         fragment.initialize_js("RapidResponseAsideInit")
         return fragment
 
+    @XBlockAside.aside_for('studio_view')
+    def studio_view_aside(self, block, context=None):  # pylint: disable=unused-argument
+        """
+        Renders the aside contents for the studio view
+        """
+        fragment = Fragment(u'')
+        fragment.add_content(
+            render_template(
+                "static/html/rapid_studio.html",
+                {'is_enabled': self.enabled}
+            )
+        )
+        fragment.add_css(get_resource_bytes("static/css/rapid.css"))
+        fragment.add_javascript(get_resource_bytes("static/js/src/rapid_studio.js"))
+        fragment.initialize_js("RapidResponseAsideStudioInit")
+        return fragment
+
     @XBlock.handler
-    @staff_only_handler_method
+    @staff_only
     def toggle_block_open_status(self, request=None, suffix=None):  # pylint: disable=unused-argument
         """
         Toggles the open/closed status for the rapid-response-enabled block
@@ -107,42 +132,22 @@ class RapidResponseAside(XBlockAside):
             status.open = not bool(status.open)
             status.save()
         return Response(
-            json_body=TemplateContext(
+            json_body=LmsTemplateContext(
                 is_open=status.open,
                 is_staff=self.is_staff()
             )._asdict()
         )
 
-    @property
-    def wrapped_block_usage_key(self):
-        """The usage_key for the block that is being wrapped by this aside"""
-        return self.scope_ids.usage_id.usage_key
-
-    @property
-    def course_key(self):
-        """The course_key for this aside"""
-        return self.scope_ids.usage_id.course_key
-
-    def is_staff(self):
-        """Returns True if the user has staff permissions"""
-        return getattr(self.runtime, 'user_is_staff', False)
-
-    def get_initial_template_context(self):
+    @XBlock.handler
+    def toggle_block_enabled(self, request=None, suffix=None):  # pylint: disable=unused-argument
         """
-        Gets the template context object for the aside when it's first loaded
+        Toggles the enabled status for the rapid-response-enabled block
         """
-        status = RapidResponseBlockStatus.objects.filter(
-            problem_usage_key=self.wrapped_block_usage_key,
-            course_key=self.course_key
-        ).first()
-        is_open = False if not status else status.open
-        return TemplateContext(
-            is_open=is_open,
-            is_staff=self.is_staff()
-        )._asdict()
+        self.enabled = not self.enabled
+        return Response(json_body={'is_enabled': self.enabled})
 
     @XBlock.handler
-    @staff_only_handler_method
+    @staff_only
     def responses(self, request=None, suffix=None):  # pylint: disable=unused-argument
         """
         Returns student responses for rapid-response-enabled block
@@ -162,3 +167,31 @@ class RapidResponseAside(XBlockAside):
             'is_open': is_open,
             'responses': responses,
         })
+
+    @property
+    def wrapped_block_usage_key(self):
+        """The usage_key for the block that is being wrapped by this aside"""
+        return self.scope_ids.usage_id.usage_key
+
+    @property
+    def course_key(self):
+        """The course_key for this aside"""
+        return self.scope_ids.usage_id.course_key
+
+    def is_staff(self):
+        """Returns True if the user has staff permissions"""
+        return getattr(self.runtime, 'user_is_staff', False)
+
+    def get_lms_template_context(self):
+        """
+        Gets the template context object for the aside when it's first loaded
+        """
+        status = RapidResponseBlockStatus.objects.filter(
+            problem_usage_key=self.wrapped_block_usage_key,
+            course_key=self.course_key
+        ).first()
+        is_open = False if not status else status.open
+        return LmsTemplateContext(
+            is_open=is_open,
+            is_staff=self.is_staff()
+        )._asdict()
