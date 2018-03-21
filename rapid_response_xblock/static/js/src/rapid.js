@@ -12,6 +12,7 @@
     var rapidTopLevelSel = '.rapid-response-block';
     var rapidBlockContentSel = '.rapid-response-content';
     var rapidBlockResultsSel = '.rapid-response-results';
+    var problemStatusBtnSel = '.problem-status-toggle';
     var toggleTemplate = _.template($(element).find("#rapid-response-toggle-tmpl").text());
 
     // default values
@@ -29,8 +30,8 @@
       $rapidBlockContent.html(toggleTemplate(state));
       renderD3(state);
 
-      $rapidBlockContent.find('.problem-status-toggle').click(function(e) {
-        $.get(toggleStatusUrl).then(
+      $rapidBlockContent.find(problemStatusBtnSel).click(function() {
+        $.post(toggleStatusUrl).then(
           function(newState) {
             state = Object.assign({}, state, newState);
             render();
@@ -38,10 +39,6 @@
             if (state.is_open) {
               pollForResponses();
             }
-          }
-        ).fail(
-          function () {
-            console.log("toggle data FAILED [" + toggleStatusUrl + "]");
           }
         );
       });
