@@ -52,7 +52,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
     def test_toggle_block_open(self):
         """Test that toggle_block_open_status changes the status of a rapid response block"""
         block_status = RapidResponseBlockStatus.objects.create(
-            usage_key=self.aside_instance.wrapped_block_usage_key,
+            problem_usage_key=self.aside_instance.wrapped_block_usage_key,
             course_key=self.aside_instance.course_key
         )
         assert block_status.open is False
@@ -95,7 +95,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         Test that the responses API shows whether the problem is open
         """
         RapidResponseBlockStatus.objects.create(
-            usage_key=self.aside_instance.wrapped_block_usage_key,
+            problem_usage_key=self.aside_instance.wrapped_block_usage_key,
             course_key=self.aside_instance.course_key,
             open=is_open,
         )
@@ -126,8 +126,8 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
 
             submissions.append(
                 RapidResponseSubmission.objects.create(
-                    course_id=course_id,
-                    problem_id=problem_id,
+                    course_key=course_id,
+                    problem_usage_key=problem_id,
                     user_id=user.id,
                     answer_id=answer_id,
                     answer_text=answer_text,
@@ -141,8 +141,8 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             email='user@user.user'
         )
         RapidResponseSubmission.objects.create(
-            course_id=course_id,
-            problem_id=UsageKey.from_string(unicode(problem_id) + "extra"),
+            course_key=course_id,
+            problem_usage_key=UsageKey.from_string(unicode(problem_id) + "extra"),
             user_id=user.id,
             answer_id='answer_0',
             answer_text='Answer #0',
