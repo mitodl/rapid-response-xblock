@@ -158,11 +158,11 @@ class RapidResponseAside(XBlockAside):
             course_key=self.course_key
         ).first()
         is_open = False if not status else status.open
-        histogram = RapidResponseSubmission.objects.filter(
+        response_data = RapidResponseSubmission.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
         ).values('answer_id').annotate(count=Count('answer_id'))
-        histogram_counts = {item['answer_id']: item['count'] for item in histogram}
+        response_counts = {item['answer_id']: item['count'] for item in response_data}
 
         problem = modulestore().get_item(self.wrapped_block_usage_key)
         tree = problem.lcp.tree
@@ -171,13 +171,13 @@ class RapidResponseAside(XBlockAside):
             {
                 'answer_id': choice.get("name"),
                 'answer_text': choice.text,
-                'count': histogram_counts.get(choice.get("name"), 0)
+                'count': response_counts.get(choice.get("name"), 0)
             } for choice in choice_elements
         ]
 
         return Response(json_body={
             'is_open': is_open,
-            'histogram': choices,
+            'response_data': choices,
         })
 
     @property

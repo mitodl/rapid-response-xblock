@@ -19,7 +19,7 @@
     var state = {
       is_open: false,
       is_staff: false,
-      histogram: []
+      response_data: []
     };
 
     /**
@@ -135,7 +135,7 @@
      * @param {Object} state The current rendering state
      */
     function renderD3(state) {
-      var histogram = state.histogram;
+      var histogram = state.response_data;
 
       // Compute responses into information suitable for a bar graph.
       var histogramAnswerIds = _.pluck(histogram, 'answer_id');
