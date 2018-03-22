@@ -3,6 +3,7 @@
 
   // time between polls of responses API
   var POLLING_MILLIS = 3000;
+  var NONE_SELECTION = 'None';
 
   function RapidResponseAsideView(runtime, element) {
     var toggleStatusUrl = runtime.handlerUrl(element, 'toggle_block_open_status');
@@ -11,6 +12,7 @@
 
     var rapidTopLevelSel = '.rapid-response-block';
     var rapidBlockContentSel = '.rapid-response-content';
+    var rapidBlockRunSelectionSel = '.rapid-response-run-selection';
     var rapidBlockResultsSel = '.rapid-response-results';
     var problemStatusBtnSel = '.problem-status-toggle';
     var toggleTemplate = _.template($(element).find("#rapid-response-toggle-tmpl").text());
@@ -21,7 +23,8 @@
       is_staff: false,
       runs: [],
       choices: [],
-      counts: {}
+      counts: {},
+      selectedRun: null  // if null, select the latest one
     };
 
     /**
@@ -35,7 +38,9 @@
       $rapidBlockContent.find(problemStatusBtnSel).click(function() {
         $.post(toggleStatusUrl).then(
           function(newState) {
-            state = _.assign({}, state, newState);
+            state = _.assign({}, state, newState, {
+              selectedRun: null
+            });
             render();
 
             if (state.is_open) {
@@ -47,13 +52,13 @@
     }
 
     // Chart D3 element
-    var chart;
+    var chart, selectionRow;
 
     // TODO: These values are guesses, maybe we want to calculate based on browser width/height? Not sure
     var ChartSettings = {
       width: 1000,
       height: 500,
-      top: 100,
+      top: 150,
       left: 80,
       bottom: 200,
       right: 80,
@@ -75,6 +80,19 @@
       // create x and y axes
       chart.append("g").attr("class", "xaxis").attr("transform", "translate(0," + ChartSettings.height + ")");
       chart.append("g").attr("class", "yaxis");
+
+      selectionRow = d3.select(element).select(rapidBlockRunSelectionSel)
+        .append("div").classed("selection-row", true);
+
+      var select = selectionRow.append("select");
+      select.classed("selection-select", true).on('change', function() {
+        var selectedRun = select.property('value');
+        if (selectedRun !== NONE_SELECTION) {
+          selectedRun = parseInt(selectedRun);
+        }
+        state.selectedRun = selectedRun;
+        render();
+      });
     }
 
     /**
@@ -141,19 +159,40 @@
       var counts = state.counts;
       var choices = state.choices;
 
-      // HACK: only show the latest run for now
-      var mostRecentRun = null;
-      if (runs.length > 0) {
-        mostRecentRun = runs[0].id;
+      // select the proper option and use it to filter the runs
+      var select = selectionRow.select("select");
+      var selectedRun = state.selectedRun;
+      if (selectedRun === null && runs.length > 0) {
+        selectedRun = runs[runs.length - 1].id;
       }
 
       var histogram = choices.map(function (item) {
         return {
           answer_id: item.answer_id,
           answer_text: item.answer_text,
-          count: counts[item.answer_id][mostRecentRun] || 0
+          count: counts[item.answer_id][selectedRun] || 0
         }
       });
+
+      // D3 data join on runs
+      var optionData = [{ id: NONE_SELECTION }].concat(runs);
+      var options = select.selectAll("option").data(optionData, function(run) {
+        return run.id;
+      });
+      options.enter()
+        .append("option")
+        .merge(options)
+        .attr("value", function(run) { return run.id; })
+        .attr("selected", function(run) {
+          return selectedRun === run.id;
+        })
+        .text(function(run) {
+          if (run.id === NONE_SELECTION) {
+            return 'None';
+          }
+          return moment(run.created).format("MMMM D, YYYY, h:mm:ss a");
+        });
+      options.exit().remove();
 
       // Compute responses into information suitable for a bar graph.
       var histogramAnswerIds = _.pluck(histogram, 'answer_id');
@@ -182,7 +221,6 @@
       var bars = chart.selectAll("rect").data(histogram, function(item) {
         return item.answer_id;
       });
-
 
       // Set the position and color attributes for the bars. Note that there is a transition applied
       // for the y axis for existing bars being updated.
@@ -252,6 +290,7 @@
     function pollForResponses() {
       $.get(responsesUrl).then(function(newState) {
         state = _.assign({}, state, newState);
+
         render();
         if (state.is_open) {
           setTimeout(pollForResponses, POLLING_MILLIS);
