@@ -142,12 +142,12 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         # replace(deprecated=True) doesn't work for BlockUsageLocator
         problem_id = BlockUsageLocator(course_id, problem_id.block_type, problem_id.block_id, deprecated=True)
 
+        # This problem is imported into the modulestore in the setup method.
+        # It needs to be present there to allow the view function to look up problem data.
         request = RequestFactory().request()
         request.user = self.instructor
         request.session = request.environ
-        store = modulestore()
-        problem = store.get_item(problem_id)
-        problem.xmodule_runtime = self.runtime
+        problem = self.get_problem_by_id(problem_id)
         aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
 
         answer_data = [

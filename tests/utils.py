@@ -146,3 +146,18 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
         with patch('rapid_response_xblock.block.modulestore', autospec=True) as modulestore_mock:
             modulestore_mock.return_value.get_item.side_effect = wrap_runtime
             yield modulestore_mock
+
+    def get_problem_by_id(self, problem_id):
+        """
+        Get a problem from the modulestore and assign the runtime
+
+        Args:
+            problem_id (UsageKey): A usage key for a problem
+
+        Returns:
+            CapaDescriptor: A problem
+        """
+        store = modulestore()
+        problem = store.get_item(problem_id)
+        problem.xmodule_runtime = self.runtime
+        return problem
