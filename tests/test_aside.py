@@ -2,13 +2,11 @@
 from ddt import data, ddt, unpack
 from mock import Mock, patch
 
-from courseware.module_render import handle_xblock_callback
 from django.contrib.auth.models import User
-from django.http.request import HttpRequest
-from django.test.client import Client, RequestFactory
+from django.test.client import RequestFactory
 from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import BlockUsageLocator
-from openedx.core.lib.xblock_utils import is_xblock_aside, get_aside_from_xblock
+from openedx.core.lib.xblock_utils import get_aside_from_xblock
 import pytest
 from xmodule.modulestore.django import modulestore
 
@@ -165,9 +163,9 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         }
 
         for item in answer_data:
-            for n in range(counts[item['answer_id']]):
-                username = 'user_{}_{}'.format(n, item['answer_id'])
-                email = 'user{}{}@email.com'.format(n, item['answer_id'])
+            for number in range(counts[item['answer_id']]):
+                username = 'user_{}_{}'.format(number, item['answer_id'])
+                email = 'user{}{}@email.com'.format(number, item['answer_id'])
                 user = User.objects.create(
                     username=username,
                     email=email,

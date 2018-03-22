@@ -119,6 +119,11 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
 
     @contextmanager
     def patch_modulestore(self):
+        """
+        Set xmodule_runtime and xmodule_runtime.xmodule_instance on blocks retrieved from the modulestore.
+
+        Only applies if get_item is used.
+        """
         store = modulestore()
 
         def wrap_runtime(*args, **kwargs):
@@ -132,7 +137,7 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
                 block.module_class,
                 descriptor=block,
                 scope_ids=block.scope_ids,
-                field_data=block._field_data,
+                field_data=block._field_data,  # pylint: disable=protected-access
                 for_parent=block.get_parent()
             )
 
