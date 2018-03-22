@@ -142,6 +142,15 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         # replace(deprecated=True) doesn't work for BlockUsageLocator
         problem_id = BlockUsageLocator(course_id, problem_id.block_type, problem_id.block_id, deprecated=True)
 
+        request = RequestFactory().request()
+        request.user = self.instructor
+        request.session = request.environ
+        store = modulestore()
+        problem = store.get_item(problem_id)
+        problem.runtime = self.runtime
+        problem.xmodule_runtime = self.runtime
+        aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
+
         answer_data = [
             {
                 'answer_id': 'choice_0',
@@ -194,15 +203,6 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             answer_text=answer_data[0]['answer_text'],
             event={}
         )
-
-        request = RequestFactory().request()
-        request.user = self.instructor
-        request.session = request.environ
-        store = modulestore()
-        problem = store.get_item(problem_id)
-        problem.runtime = self.runtime
-        problem.xmodule_runtime = self.runtime
-        aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
 
         with self.patch_modulestore():
             resp = aside_block.responses()
