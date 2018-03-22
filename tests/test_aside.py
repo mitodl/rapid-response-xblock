@@ -147,7 +147,6 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         request.session = request.environ
         store = modulestore()
         problem = store.get_item(problem_id)
-        problem.runtime = self.runtime
         problem.xmodule_runtime = self.runtime
         aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
 
