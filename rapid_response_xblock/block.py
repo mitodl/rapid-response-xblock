@@ -15,7 +15,7 @@ from xblock.fields import Scope, Boolean
 from xmodule.modulestore.django import modulestore
 
 from rapid_response_xblock.models import (
-    RapidResponseBlockStatus,
+    RapidResponseRun,
     RapidResponseSubmission,
 )
 
@@ -126,15 +126,17 @@ class RapidResponseAside(XBlockAside):
         Toggles the open/closed status for the rapid-response-enabled block
         """
         with transaction.atomic():
-            status, _ = RapidResponseBlockStatus.objects.get_or_create(
+            run, is_new = RapidResponseRun.objects.get_or_create(
                 problem_usage_key=self.wrapped_block_usage_key,
-                course_key=self.course_key
+                course_key=self.course_key,
+                open=True
             )
-            status.open = not bool(status.open)
-            status.save()
+            if not is_new:
+                run.open = False
+                run.save()
         return Response(
             json_body=LmsTemplateContext(
-                is_open=status.open,
+                is_open=run.open,
                 is_staff=self.is_staff()
             )._asdict()
         )
@@ -153,31 +155,45 @@ class RapidResponseAside(XBlockAside):
         """
         Returns student responses for rapid-response-enabled block
         """
-        status = RapidResponseBlockStatus.objects.filter(
-            problem_usage_key=self.wrapped_block_usage_key,
-            course_key=self.course_key
-        ).first()
-        is_open = False if not status else status.open
-        response_data = RapidResponseSubmission.objects.filter(
+        runs = RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
-        ).values('answer_id').annotate(count=Count('answer_id'))
-        response_counts = {item['answer_id']: item['count'] for item in response_data}
+        ).order_by('created')
+        is_open = runs.filter(open=True).exists()
+        response_data = RapidResponseSubmission.objects.filter(
+            run__problem_usage_key=self.wrapped_block_usage_key,
+            run__course_key=self.course_key,
+        ).values('answer_id', 'run', 'run__created').annotate(count=Count('answer_id'))
+        # Make sure every answer has a count and convert to JSON serializable format
+        response_counts = {(item['answer_id'], item['run']): item['count'] for item in response_data}
 
         problem = modulestore().get_item(self.wrapped_block_usage_key)
         tree = problem.lcp.tree
         choice_elements = tree.xpath('//choicegroup/choice')
         choices = [
             {
-                'answer_id': choice.get("name"),
+                'answer_id': choice.get('name'),
                 'answer_text': choice.text,
-                'count': response_counts.get(choice.get("name"), 0)
             } for choice in choice_elements
         ]
+        serialized_runs = [
+            {
+                'id': run.id,
+                'created': run.created.isoformat(),
+            } for run in runs
+        ]
+        counts = {
+            choice['answer_id']: {
+                run['id']: response_counts.get((choice['answer_id'], run['id']), 0)
+                for run in serialized_runs
+            } for choice in choices
+        }
 
         return Response(json_body={
             'is_open': is_open,
-            'response_data': choices,
+            'runs': serialized_runs,
+            'choices': choices,
+            'counts': counts,
         })
 
     @property
@@ -198,11 +214,11 @@ class RapidResponseAside(XBlockAside):
         """
         Gets the template context object for the aside when it's first loaded
         """
-        status = RapidResponseBlockStatus.objects.filter(
+        is_open = RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
-            course_key=self.course_key
-        ).first()
-        is_open = False if not status else status.open
+            course_key=self.course_key,
+            open=True
+        ).exists()
         return LmsTemplateContext(
             is_open=is_open,
             is_staff=self.is_staff()

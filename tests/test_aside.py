@@ -1,9 +1,9 @@
 """Tests for the rapid-response aside logic"""
+from collections import defaultdict
 from ddt import data, ddt, unpack
 from mock import Mock, patch
 
 from django.contrib.auth.models import User
-from django.test.client import RequestFactory
 from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import BlockUsageLocator
 from openedx.core.lib.xblock_utils import get_aside_from_xblock
@@ -11,7 +11,7 @@ import pytest
 
 from rapid_response_xblock.block import RapidResponseAside
 from rapid_response_xblock.models import (
-    RapidResponseBlockStatus,
+    RapidResponseRun,
     RapidResponseSubmission,
 )
 from tests.utils import (
@@ -64,19 +64,37 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
 
     def test_toggle_block_open(self):
         """Test that toggle_block_open_status changes the status of a rapid response block"""
-        block_status = RapidResponseBlockStatus.objects.create(
-            problem_usage_key=self.aside_instance.wrapped_block_usage_key,
-            course_key=self.aside_instance.course_key
+        usage_key = self.aside_instance.wrapped_block_usage_key
+        course_key = self.aside_instance.course_key
+        run = RapidResponseRun.objects.create(
+            problem_usage_key=usage_key,
+            course_key=course_key,
         )
-        assert block_status.open is False
+        assert run.open is False
 
         self.aside_instance.toggle_block_open_status(Mock())
-        block_status.refresh_from_db()
-        assert block_status.open is True
+        assert RapidResponseRun.objects.count() == 2
+        assert RapidResponseRun.objects.filter(
+            problem_usage_key=usage_key,
+            course_key=course_key,
+            open=True
+        ).exists() is True
 
         self.aside_instance.toggle_block_open_status(Mock())
-        block_status.refresh_from_db()
-        assert block_status.open is False
+        assert RapidResponseRun.objects.count() == 2
+        assert RapidResponseRun.objects.filter(
+            problem_usage_key=usage_key,
+            course_key=course_key,
+            open=True
+        ).exists() is False
+
+        self.aside_instance.toggle_block_open_status(Mock())
+        assert RapidResponseRun.objects.count() == 3
+        assert RapidResponseRun.objects.filter(
+            problem_usage_key=usage_key,
+            course_key=course_key,
+            open=True
+        ).exists() is True
 
     def test_toggle_block_enabled(self):
         """
@@ -119,7 +137,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         """
         Test that the responses API shows whether the problem is open
         """
-        RapidResponseBlockStatus.objects.create(
+        RapidResponseRun.objects.create(
             problem_usage_key=self.aside_instance.wrapped_block_usage_key,
             course_key=self.aside_instance.course_key,
             open=is_open,
@@ -141,48 +159,58 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         # replace(deprecated=True) doesn't work for BlockUsageLocator
         problem_id = BlockUsageLocator(course_id, problem_id.block_type, problem_id.block_id, deprecated=True)
 
+        run1 = RapidResponseRun.objects.create(
+            course_key=course_id,
+            problem_usage_key=problem_id,
+            open=False
+        )
+        run2 = RapidResponseRun.objects.create(
+            course_key=course_id,
+            problem_usage_key=problem_id,
+            open=True
+        )
+
         # This problem is imported into the modulestore in the setup method.
         # It needs to be present there to allow the view function to look up problem data.
-        request = RequestFactory().request()
-        request.user = self.instructor
-        request.session = request.environ
         problem = self.get_problem_by_id(problem_id)
         aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
 
-        answer_id_text_counts = zip(
-            range(3),
-            [
-                'an incorrect answer',
-                'the correct answer',
-                'a different incorrect answer',
-            ],
-            range(2, 5),
-        )
-        answer_data = [
-            {
-                'answer_id': 'choice_{}'.format(i),
-                'answer_text': text,
-            }
-            for i, text, _ in answer_id_text_counts
+        answers = [
+            ('choice_0', 'an incorrect answer'),
+            ('choice_1', 'the correct answer'),
+            ('choice_2', 'a different incorrect answer'),
         ]
-        counts = {'choice_{}'.format(ans_id): ans_count for ans_id, _, ans_count in answer_id_text_counts}
+        answers_lookup = {answer_id: answer_text for answer_id, answer_text in answers}
+        counts = list(zip(
+            ['choice_{}'.format(i) for i in range(3)],
+            range(2, 5),
+            [run1.id, run1.id, run1.id],
+        )) + list(zip(
+            ['choice_{}'.format(i) for i in range(3)],
+            [3, 0, 7],
+            [run2.id, run2.id, run2.id],
+        ))
 
-        for item in answer_data:
-            for number in range(counts[item['answer_id']]):
-                username = 'user_{}_{}'.format(number, item['answer_id'])
-                email = 'user{}{}@email.com'.format(number, item['answer_id'])
-                user = User.objects.create(
+        counts_dict = defaultdict(dict)
+        for answer_id, count, run_id in counts:
+            counts_dict[answer_id][str(run_id)] = count
+
+        for answer_id, num_submissions, run_id in counts:
+            answer_text = answers_lookup[answer_id]
+            for number in range(num_submissions):
+                username = 'user_{}_{}'.format(number, answer_id)
+                email = 'user{}{}@email.com'.format(number, answer_id)
+                user, _ = User.objects.get_or_create(
                     username=username,
                     email=email,
                 )
 
                 RapidResponseSubmission.objects.create(
                     # For some reason the modulestore looks for a deprecated course key
-                    course_key=course_id,
-                    problem_usage_key=problem_id,
+                    run=RapidResponseRun.objects.get(id=run_id),
                     user_id=user.id,
-                    answer_id=item['answer_id'],
-                    answer_text=item['answer_text'],
+                    answer_id=answer_id,
+                    answer_text=answer_text,
                     event={}
                 )
 
@@ -191,12 +219,16 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             username='user_missing',
             email='user@user.user'
         )
-        RapidResponseSubmission.objects.create(
+        other_run = RapidResponseRun.objects.create(
             course_key=course_id,
             problem_usage_key=UsageKey.from_string(unicode(problem_id) + "extra"),
+            open=False
+        )
+        RapidResponseSubmission.objects.create(
+            run=other_run,
             user_id=user.id,
-            answer_id=answer_data[0]['answer_id'],
-            answer_text=answer_data[0]['answer_text'],
+            answer_id=answers[0][0],
+            answer_text=answers[0][1],
             event={}
         )
 
@@ -204,10 +236,45 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             resp = aside_block.responses()
 
         assert resp.status_code == 200
+        assert resp.json['is_open'] is True
+
+        assert resp.json['choices'] == [{
+            'answer_id': answer_id,
+            'answer_text': answer_text,
+        } for answer_id, answer_text in answers]
+        assert resp.json['runs'] == [{
+            'id': run.id,
+            'created': run.created.isoformat(),
+        } for run in [run1, run2]]
+        assert resp.json['counts'] == counts_dict
+
+    def test_zero_responses(self):
+        """
+        If there is no response data there should still be valid answers
+        """
+        problem_id = self.aside_instance.wrapped_block_usage_key
+        problem = self.get_problem_by_id(problem_id)
+        aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
+
+        with self.patch_modulestore():
+            resp = aside_block.responses()
+
+        assert resp.status_code == 200
         assert resp.json['is_open'] is False
 
-        assert resp.json['response_data'] == [{
-            'count': counts[item['answer_id']],
-            'answer_id': item['answer_id'],
-            'answer_text': item['answer_text'],
-        } for item in answer_data]
+        answers = [
+            ('choice_0', 'an incorrect answer'),
+            ('choice_1', 'the correct answer'),
+            ('choice_2', 'a different incorrect answer'),
+        ]
+
+        assert resp.json['choices'] == [
+            {
+                'answer_id': answer_id,
+                'answer_text': answer_text,
+            } for answer_id, answer_text in answers
+        ]
+        assert resp.json['runs'] == []
+        assert resp.json['counts'] == {
+            answer_id: {} for answer_id, _ in answers
+        }

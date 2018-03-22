@@ -10,7 +10,7 @@ from opaque_keys.edx.locator import CourseLocator
 from track.backends import BaseBackend
 
 from rapid_response_xblock.models import (
-    RapidResponseBlockStatus,
+    RapidResponseRun,
     RapidResponseSubmission,
 )
 
@@ -57,11 +57,12 @@ class SubmissionRecorder(BaseBackend):
                 answer_text = submission[submission_key]['answer']
                 answer_id = event['event']['answers'][submission_key]
 
-                if not RapidResponseBlockStatus.objects.filter(
+                open_run = RapidResponseRun.objects.filter(
                     problem_usage_key=problem_id,
                     course_key=course_key,
                     open=True
-                ).exists():
+                ).first()
+                if not open_run:
                     # Problem is not open
                     return
 
@@ -69,14 +70,12 @@ class SubmissionRecorder(BaseBackend):
                 with transaction.atomic():
                     RapidResponseSubmission.objects.filter(
                         user_id=user_id,
-                        course_key=course_key,
-                        problem_usage_key=problem_id,
+                        run=open_run,
                     ).delete()
 
                     RapidResponseSubmission.objects.create(
                         user_id=user_id,
-                        course_key=course_key,
-                        problem_usage_key=problem_id,
+                        run=open_run,
                         event=event,
                         answer_id=answer_id,
                         answer_text=answer_text,
