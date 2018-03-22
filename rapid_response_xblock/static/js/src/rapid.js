@@ -17,6 +17,8 @@
     '#7cce40',
     '#876a16'
   ];
+  // this sentinel value means no data should be shown
+  var NONE_SELECTION = 'None';
 
   function RapidResponseAsideView(runtime, element) {
     var toggleStatusUrl = runtime.handlerUrl(element, 'toggle_block_open_status');
@@ -35,7 +37,8 @@
       is_staff: false,
       runs: [],
       choices: [],
-      counts: {}
+      counts: {},
+      selectedRuns: [null]  // one per chart. null means select the latest one
     };
 
     /**
@@ -44,12 +47,16 @@
     function render() {
       var $rapidBlockContent = $element.find(rapidBlockContentSel);
       $rapidBlockContent.html(toggleTemplate(state));
-      renderD3(state);
+      renderD3();
 
       $rapidBlockContent.find(problemStatusBtnSel).click(function() {
         $.post(toggleStatusUrl).then(
           function(newState) {
-            state = _.assign({}, state, newState);
+            // if the button to toggle this is visible there should only be one chart, so
+            // selectedRuns just replaces the existing one
+            state = _.assign({}, state, newState, {
+              selectedRuns: [null]
+            });
             render();
 
             if (state.is_open) {
@@ -60,36 +67,16 @@
       });
     }
 
-    // Chart D3 element
-    var chart;
-
     // TODO: These values are guesses, maybe we want to calculate based on browser width/height? Not sure
     var ChartSettings = {
-      width: 1000,
+      width: 900,
       height: 500,
-      top: 100,
+      top: 80,
       left: 80,
       bottom: 200,
-      right: 80,
+      right: 0,
       numYAxisTicks: 6
     };
-
-    /**
-     * Initialize grade histogram elements.
-     */
-    function initD3() {
-      var svg = d3.select(element).select(rapidBlockResultsSel).append("svg");
-
-      svg.attr("width", ChartSettings.width + ChartSettings.left + ChartSettings.right);
-      svg.attr("height", ChartSettings.height + ChartSettings.top + ChartSettings.bottom);
-      // The g element has a little bit of padding so the x and y axes can surround it
-      chart = svg.append("g");
-      chart.attr("transform", "translate(" + ChartSettings.left + "," + ChartSettings.top + ")");
-
-      // create x and y axes
-      chart.append("g").attr("class", "xaxis").attr("transform", "translate(0," + ChartSettings.height + ")");
-      chart.append("g").attr("class", "yaxis");
-    }
 
     /**
      * Given the domain limits return some tick values, equally spaced out, all integers.
@@ -147,27 +134,127 @@
 
     /**
      * Renders the graph and adjusts axes based on responses to the given problem.
-     *
-     * @param {Object} state The current rendering state
      */
-    function renderD3(state) {
+    function renderD3() {
+      // Get the indexes for selected runs. This should either be [0] or [0, 1].
+      var chartKeys = _.keys(state.selectedRuns);
+
+      // D3 data join for charts. Create a container div for each chart to store graph, select element and buttons.
+      var containers = d3.select(element).select(
+        rapidBlockResultsSel
+      ).selectAll(".chart-container").data(chartKeys);
+      var containersEnter = containers.enter()
+        .append("div");
+
+      // chart selection, close and compare buttons
+      var selectionRows = containers.selectAll(".selection-row");
+      var selectionRowsEnter = containersEnter
+        .append("div")
+        .classed("selection-row", true);
+
+      var select = selectionRowsEnter.append("select")
+        .on('change', function(index) {
+          var selectedRun = select.property('value');
+          if (selectedRun !== NONE_SELECTION) {
+            selectedRun = parseInt(selectedRun);
+          }
+          state.selectedRuns[index] = selectedRun;
+          render();
+        });
+
+      selectionRowsEnter.append("a")
+        .classed("compare-responses", true).text("Compare responses").on("click", function() {
+          state.selectedRuns = [state.selectedRuns[0], NONE_SELECTION];
+          render();
+        });
+
+      selectionRowsEnter.append("a")
+        .classed("close", true).text("Close ").on('click', function(index) {
+          state.selectedRuns.splice(index, 1);
+          render();
+        }).append("span").attr("class", "fa fa-close");
+
+      var selectionRowsMerged = selectionRowsEnter.merge(selectionRows);
+      selectionRowsMerged.selectAll(".compare-responses").classed("hidden", function() {
+        return chartKeys.length !== 1 || state.is_open;
+      });
+      selectionRowsMerged.selectAll(".close").classed("hidden", function() {
+        return chartKeys.length === 1;
+      });
+
+      // create the chart svg container
+      var chartsEnter = containersEnter
+        .append("svg")
+        // The g element has a little bit of padding so the x and y axes can surround it
+        .append("g").attr("class", "chart");
+      // create x and y axes
+      chartsEnter.append("g").attr("class", "xaxis").attr("transform", "translate(0," + ChartSettings.height + ")");
+      chartsEnter.append("g").attr("class", "yaxis");
+
+      containersEnter.merge(containers)
+        .attr("class", "chart-container " + (chartKeys.length === 1 ? 'single-chart' : 'two-charts'))
+        .each(function (index, __, charts) {
+          renderChart(d3.select(charts[index]), index);
+        })
+        .selectAll("svg")
+        .attr("width", (ChartSettings.width / chartKeys.length) + ChartSettings.left + ChartSettings.right)
+        .attr("height", ChartSettings.height + ChartSettings.top + ChartSettings.bottom)
+        .selectAll(".chart")
+        .attr("transform", "translate(" + ChartSettings.left + "," + ChartSettings.top + ")");
+
+      // Remove charts if selectedRuns reduces in size.
+      // We don't need to do this for all the inner elements, the remove will propagate.
+      containers.exit().remove();
+    }
+
+    /**
+     * Render the chart in the container.
+     *
+     * @param {Object} container D3 selector for the chart container
+     * @param {number} chartIndex The index of the chart (either 0 or 1)
+     */
+    function renderChart(container, chartIndex) {
       var runs = state.runs;
       var counts = state.counts;
       var choices = state.choices;
+      var selectedRun = state.selectedRuns[chartIndex];
 
-      // HACK: only show the latest run for now
-      var mostRecentRun = null;
-      if (runs.length > 0) {
-        mostRecentRun = runs[0].id;
+      // select the proper option and use it to filter the runs
+      var select = container.select(".selection-row").select("select");
+      if (selectedRun === null && runs.length > 0) {
+        // The newest run should be the most recent one according to the info received from the server.
+        selectedRun = runs[0].id;
       }
 
       var histogram = choices.map(function (item) {
         return {
           answer_id: item.answer_id,
           answer_text: item.answer_text,
-          count: counts[item.answer_id][mostRecentRun] || 0
+          count: counts[item.answer_id][selectedRun] || 0
         }
       });
+
+      // D3 data join on runs to create a select list
+      var optionData = [{ id: NONE_SELECTION }].concat(runs);
+      var options = select.selectAll("option").data(optionData, function(run) {
+        return run.id;
+      });
+      options.enter()
+        .append("option")
+        .merge(options)
+        .attr("value", function(run) { return run.id; })
+        .text(function(run) {
+          if (run.id === NONE_SELECTION) {
+            if (chartIndex > 0) {
+              return 'Select previous response to compare';
+            }
+            return 'None';
+          }
+          return moment(run.created).format("MMMM D, YYYY, h:mm:ss a");
+        });
+      options.exit().remove();
+
+      select.enter().merge(select).property('value', selectedRun);
 
       // Compute responses into information suitable for a bar graph.
       var histogramAnswerIds = _.pluck(histogram, 'answer_id');
@@ -177,7 +264,7 @@
 
       // Create x scale to map answer ids to bar x coordinate locations. Note that
       // histogram was previously sorted in order of the lowercase answer id.
-      var x = d3.scaleBand().rangeRound([0, ChartSettings.width]).padding(0.1).domain(
+      var x = d3.scaleBand().rangeRound([0, ChartSettings.width / state.selectedRuns.length]).padding(0.1).domain(
         histogramAnswerIds
       );
       // Create y scale to map response count to y coordinate for the top of the bar.
@@ -193,10 +280,10 @@
       // The D3 data join. This matches the histogram data to the rect elements
       // (there is a __data__ attribute on each rect keeping track of this). Also tell D3 to use the answer_id to make
       // this match.
+      var chart = container.select(".chart");
       var bars = chart.selectAll("rect").data(histogram, function(item) {
         return item.answer_id;
       });
-
 
       // Set the position and color attributes for the bars. Note that there is a transition applied
       // for the y axis for existing bars being updated.
@@ -285,6 +372,7 @@
     function pollForResponses() {
       $.get(responsesUrl).then(function(newState) {
         state = _.assign({}, state, newState);
+
         render();
         if (state.is_open) {
           setTimeout(pollForResponses, POLLING_MILLIS);
@@ -301,7 +389,6 @@
         is_open: block.attr('data-open') === 'True',
         is_staff: block.attr('data-staff') === 'True'
       });
-      initD3();
       render();
 
       if (state.is_staff) {
