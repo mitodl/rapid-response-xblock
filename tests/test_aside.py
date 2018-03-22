@@ -210,7 +210,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.status_code == 200
         assert resp.json['is_open'] is False
 
-        assert resp.json['histogram'] == [{
+        assert resp.json['response_data'] == [{
             'count': counts[item['answer_id']],
             'answer_id': item['answer_id'],
             'answer_text': item['answer_text'],
