@@ -8,7 +8,6 @@ from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import BlockUsageLocator
 from openedx.core.lib.xblock_utils import get_aside_from_xblock
 import pytest
-from xmodule.modulestore.django import modulestore
 
 from rapid_response_xblock.block import RapidResponseAside
 from rapid_response_xblock.models import (
