@@ -149,20 +149,23 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         problem = self.get_problem_by_id(problem_id)
         aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
 
-        answer_id_counts = zip(range(3), range(2, 5))
-        answer_texts = [
-            'an incorrect answer',
-            'the correct answer',
-            'a different incorrect answer',
-        ]
+        answer_id_text_counts = zip(
+            range(3),
+            [
+                'an incorrect answer',
+                'the correct answer',
+                'a different incorrect answer',
+            ],
+            range(2, 5),
+        )
         answer_data = [
             {
                 'answer_id': 'choice_{}'.format(i),
-                'answer_text': answer_texts[i],
+                'answer_text': text,
             }
-            for i, _ in answer_id_counts
+            for i, text, _ in answer_id_text_counts
         ]
-        counts = {'choice_{}'.format(ans_id): ans_count for ans_id, ans_count in answer_id_counts}
+        counts = {'choice_{}'.format(ans_id): ans_count for ans_id, _, ans_count in answer_id_text_counts}
 
         for item in answer_data:
             for number in range(counts[item['answer_id']]):
