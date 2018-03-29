@@ -5,7 +5,6 @@ from mock import Mock, patch, PropertyMock
 
 from django.contrib.auth.models import User
 from opaque_keys.edx.keys import UsageKey
-from opaque_keys.edx.locator import BlockUsageLocator
 
 from rapid_response_xblock.block import (
     RapidResponseAside,
