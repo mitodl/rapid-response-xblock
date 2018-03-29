@@ -148,7 +148,6 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.status_code == 200
         assert resp.json['is_open'] == is_open
 
-    @pytest.mark.usefixtures("example_event")
     def test_responses(self):
         """
         Test that the responses API will show recorded events during the open period
@@ -245,6 +244,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.json['runs'] == [{
             'id': run.id,
             'created': run.created.isoformat(),
+            'open': run.open,
         } for run in [run2, run1]]
         assert resp.json['counts'] == counts_dict
 
