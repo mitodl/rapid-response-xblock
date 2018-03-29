@@ -6,8 +6,6 @@ from mock import Mock, patch
 from django.contrib.auth.models import User
 from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import BlockUsageLocator
-from openedx.core.lib.xblock_utils import get_aside_from_xblock
-import pytest
 
 from rapid_response_xblock.block import (
     get_choices_from_problem,
