@@ -158,7 +158,7 @@ class RapidResponseAside(XBlockAside):
         runs = RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
-        ).order_by('created')
+        ).order_by('-created')
         is_open = runs.filter(open=True).exists()
         response_data = RapidResponseSubmission.objects.filter(
             run__problem_usage_key=self.wrapped_block_usage_key,

@@ -245,7 +245,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.json['runs'] == [{
             'id': run.id,
             'created': run.created.isoformat(),
-        } for run in [run1, run2]]
+        } for run in [run2, run1]]
         assert resp.json['counts'] == counts_dict
 
     def test_zero_responses(self):
