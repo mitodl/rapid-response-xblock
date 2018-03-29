@@ -92,22 +92,16 @@ def get_choices_from_problem(problem_key):
     ]
 
 
-def get_runs(course_key, problem_usage_key):
+def serialize_runs(runs):
     """
     Look up rapid response runs for a problem and return a serialized representation
 
     Args:
-        course_key (CourseLocator): A course key
-        problem_usage_key (UsageKey): A problem usage key
+        runs (iterable of RapidResponseRun): A queryset of RapidResponseRun
 
     Returns:
         list of dict: a list of serialized runs
     """
-    runs = list(RapidResponseRun.objects.filter(
-        problem_usage_key=problem_usage_key,
-        course_key=course_key,
-    ).order_by('-created'))
-
     return [
         {
             'id': run.id,
@@ -117,14 +111,12 @@ def get_runs(course_key, problem_usage_key):
     ]
 
 
-def get_counts_for_problem(course_key, problem_usage_key, runs, choices):
+def get_counts_for_problem(run_ids, choices):
     """
     Produce histogram count data for a given problem
 
     Args:
-        course_key (CourseLocator): A course key
-        problem_usage_key (UsageKey): A problem usage key
-        runs (list of dict): Serialized runs for the problem
+        run_ids (list of int): Serialized run id for the problem
         choices (list of dict): Serialized choices
 
     Returns:
@@ -132,16 +124,15 @@ def get_counts_for_problem(course_key, problem_usage_key, runs, choices):
             A mapping of answer id => run id => count for that run
     """
     response_data = RapidResponseSubmission.objects.filter(
-        run__problem_usage_key=problem_usage_key,
-        run__course_key=course_key,
-    ).values('answer_id', 'run', 'run__created').annotate(count=Count('answer_id'))
+        run__id__in=run_ids
+    ).values('answer_id', 'run').annotate(count=Count('answer_id'))
     # Make sure every answer has a count and convert to JSON serializable format
     response_counts = {(item['answer_id'], item['run']): item['count'] for item in response_data}
 
     return {
         choice['answer_id']: {
-            run['id']: response_counts.get((choice['answer_id'], run['id']), 0)
-            for run in runs
+            run_id: response_counts.get((choice['answer_id'], run_id), 0)
+            for run_id in run_ids
         } for choice in choices
     }
 
@@ -233,11 +224,15 @@ class RapidResponseAside(XBlockAside):
         """
         Returns student responses for rapid-response-enabled block
         """
-        runs = get_runs(self.course_key, self.wrapped_block_usage_key)
+        run_querysets = RapidResponseRun.objects.filter(
+            problem_usage_key=self.wrapped_block_usage_key,
+            course_key=self.course_key,
+        ).order_by('-created')
+        runs = serialize_runs(run_querysets)
         # Only the most recent run should possibly be open
         is_open = runs[0]['open'] if runs else False
         choices = get_choices_from_problem(self.wrapped_block_usage_key)
-        counts = get_counts_for_problem(self.course_key, self.wrapped_block_usage_key, runs, choices)
+        counts = get_counts_for_problem([run['id'] for run in runs], choices)
 
         return Response(json_body={
             'is_open': is_open,

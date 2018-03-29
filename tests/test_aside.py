@@ -10,7 +10,7 @@ from opaque_keys.edx.locator import BlockUsageLocator
 from rapid_response_xblock.block import (
     get_choices_from_problem,
     get_counts_for_problem,
-    get_runs,
+    serialize_runs,
     RapidResponseAside,
 )
 from rapid_response_xblock.models import (
@@ -156,38 +156,41 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         """
         Test that the responses API will show recorded events during the open period
         """
-        runs = [
-            {
-                'open': True
-            }, {
-                'open': False
-            },
-        ] if has_runs else []
-        counts = 'counts'
-        choices = 'choices'
-
         course_id = self.aside_instance.course_key
         problem_id = self.aside_instance.wrapped_block_usage_key
+
+        if has_runs:
+            RapidResponseRun.objects.create(
+                course_key=course_id,
+                problem_usage_key=problem_id,
+                open=False
+            )
+            RapidResponseRun.objects.create(
+                course_key=course_id,
+                problem_usage_key=problem_id,
+                open=True
+            )
+
+        counts = 'counts'
+        choices = 'choices'
 
         with patch(
             'rapid_response_xblock.block.get_counts_for_problem', return_value=counts,
         ) as get_counts_mock, patch(
-            'rapid_response_xblock.block.get_runs', return_value=runs
-        ) as get_runs_mock, patch(
             'rapid_response_xblock.block.get_choices_from_problem', return_value=choices
         ) as get_choices_mock:
             resp = self.aside_instance.responses()
 
+        run_queryset = RapidResponseRun.objects.order_by('-created')
         assert resp.status_code == 200
         assert resp.json['is_open'] is has_runs
 
         assert resp.json['choices'] == choices
-        assert resp.json['runs'] == runs
+        assert resp.json['runs'] == serialize_runs(run_queryset)
         assert resp.json['counts'] == counts
 
-        get_runs_mock.assert_called_once_with(course_id, problem_id)
         get_choices_mock.assert_called_once_with(problem_id)
-        get_counts_mock.assert_called_once_with(course_id, problem_id, runs, choices)
+        get_counts_mock.assert_called_once_with([run.id for run in run_queryset], choices)
 
     def test_get_choices_from_problem(self):
         """
@@ -261,13 +264,13 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
                     event={}
                 )
 
-        runs = get_runs(course_id, problem_id)
+        run_ids = [run2.id, run1.id]
 
-        assert get_counts_for_problem(course_id, problem_id, runs, choices) == counts_dict
+        assert get_counts_for_problem(run_ids, choices) == counts_dict
 
-    def test_get_runs(self):
+    def test_serialize_runs(self):
         """
-        get_runs should return a serialized representation of runs for a problem
+        serialize_runs should return a serialized representation of runs for a problem
         """
         course_id = self.aside_instance.course_key
         problem_id = self.aside_instance.wrapped_block_usage_key
@@ -283,7 +286,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             open=True
         )
 
-        assert get_runs(course_id, problem_id) == [{
+        assert serialize_runs([run2, run1]) == [{
             'id': run.id,
             'created': run.created.isoformat(),
             'open': run.open,
