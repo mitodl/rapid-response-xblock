@@ -144,7 +144,7 @@
       // HACK: only show the latest run for now
       var mostRecentRun = null;
       if (runs.length > 0) {
-        mostRecentRun = runs[runs.length - 1].id;
+        mostRecentRun = runs[0].id;
       }
 
       var histogram = choices.map(function (item) {
