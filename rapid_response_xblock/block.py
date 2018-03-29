@@ -155,11 +155,12 @@ class RapidResponseAside(XBlockAside):
         """
         Returns student responses for rapid-response-enabled block
         """
-        runs = RapidResponseRun.objects.filter(
+        runs = list(RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
-        ).order_by('-created')
-        is_open = runs.filter(open=True).exists()
+        ).order_by('-created'))
+        # Only the most recent run should possibly be open
+        is_open = runs[0].open if runs else False
         response_data = RapidResponseSubmission.objects.filter(
             run__problem_usage_key=self.wrapped_block_usage_key,
             run__course_key=self.course_key,
