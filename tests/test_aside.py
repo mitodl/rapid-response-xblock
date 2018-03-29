@@ -3,7 +3,6 @@ from collections import defaultdict
 from ddt import data, ddt, unpack
 from mock import Mock, patch, PropertyMock
 
-from django.contrib.auth.models import User
 from opaque_keys.edx.keys import UsageKey
 from student.tests.factories import UserFactory
 
