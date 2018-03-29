@@ -9,7 +9,12 @@ from opaque_keys.edx.locator import BlockUsageLocator
 from openedx.core.lib.xblock_utils import get_aside_from_xblock
 import pytest
 
-from rapid_response_xblock.block import RapidResponseAside
+from rapid_response_xblock.block import (
+    get_choices_from_problem,
+    get_counts_for_problem,
+    get_runs,
+    RapidResponseAside,
+)
 from rapid_response_xblock.models import (
     RapidResponseRun,
     RapidResponseSubmission,
@@ -148,109 +153,47 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.status_code == 200
         assert resp.json['is_open'] == is_open
 
-    def test_responses(self):
+    @data(True, False)
+    def test_responses(self, has_runs):
         """
         Test that the responses API will show recorded events during the open period
         """
-        # The testing modulestore expects deprecated keys for some reason
-        course_id = self.aside_instance.course_key.replace(deprecated=True)
+        runs = [
+            {
+                'open': True
+            }, {
+                'open': False
+            },
+        ] if has_runs else []
+        counts = 'counts'
+        choices = 'choices'
+
+        course_id = self.aside_instance.course_key
         problem_id = self.aside_instance.wrapped_block_usage_key
-        # replace(deprecated=True) doesn't work for BlockUsageLocator
-        problem_id = BlockUsageLocator(course_id, problem_id.block_type, problem_id.block_id, deprecated=True)
 
-        run1 = RapidResponseRun.objects.create(
-            course_key=course_id,
-            problem_usage_key=problem_id,
-            open=False
-        )
-        run2 = RapidResponseRun.objects.create(
-            course_key=course_id,
-            problem_usage_key=problem_id,
-            open=True
-        )
-
-        # This problem is imported into the modulestore in the setup method.
-        # It needs to be present there to allow the view function to look up problem data.
-        problem = self.get_problem_by_id(problem_id)
-        aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
-
-        answers = [
-            ('choice_0', 'an incorrect answer'),
-            ('choice_1', 'the correct answer'),
-            ('choice_2', 'a different incorrect answer'),
-        ]
-        answers_lookup = {answer_id: answer_text for answer_id, answer_text in answers}
-        counts = list(zip(
-            ['choice_{}'.format(i) for i in range(3)],
-            range(2, 5),
-            [run1.id, run1.id, run1.id],
-        )) + list(zip(
-            ['choice_{}'.format(i) for i in range(3)],
-            [3, 0, 7],
-            [run2.id, run2.id, run2.id],
-        ))
-
-        counts_dict = defaultdict(dict)
-        for answer_id, count, run_id in counts:
-            counts_dict[answer_id][str(run_id)] = count
-
-        for answer_id, num_submissions, run_id in counts:
-            answer_text = answers_lookup[answer_id]
-            for number in range(num_submissions):
-                username = 'user_{}_{}'.format(number, answer_id)
-                email = 'user{}{}@email.com'.format(number, answer_id)
-                user, _ = User.objects.get_or_create(
-                    username=username,
-                    email=email,
-                )
-
-                RapidResponseSubmission.objects.create(
-                    # For some reason the modulestore looks for a deprecated course key
-                    run=RapidResponseRun.objects.get(id=run_id),
-                    user_id=user.id,
-                    answer_id=answer_id,
-                    answer_text=answer_text,
-                    event={}
-                )
-
-        # create another submission which has a different problem id and won't be included in the results
-        user = User.objects.create(
-            username='user_missing',
-            email='user@user.user'
-        )
-        other_run = RapidResponseRun.objects.create(
-            course_key=course_id,
-            problem_usage_key=UsageKey.from_string(unicode(problem_id) + "extra"),
-            open=False
-        )
-        RapidResponseSubmission.objects.create(
-            run=other_run,
-            user_id=user.id,
-            answer_id=answers[0][0],
-            answer_text=answers[0][1],
-            event={}
-        )
-
-        with self.patch_modulestore():
-            resp = aside_block.responses()
+        with patch(
+            'rapid_response_xblock.block.get_counts_for_problem', return_value=counts,
+        ) as get_counts_mock, patch(
+            'rapid_response_xblock.block.get_runs', return_value=runs
+        ) as get_runs_mock, patch(
+            'rapid_response_xblock.block.get_choices_from_problem', return_value=choices
+        ) as get_choices_mock:
+            resp = self.aside_instance.responses()
 
         assert resp.status_code == 200
-        assert resp.json['is_open'] is True
+        assert resp.json['is_open'] is has_runs
 
-        assert resp.json['choices'] == [{
-            'answer_id': answer_id,
-            'answer_text': answer_text,
-        } for answer_id, answer_text in answers]
-        assert resp.json['runs'] == [{
-            'id': run.id,
-            'created': run.created.isoformat(),
-            'open': run.open,
-        } for run in [run2, run1]]
-        assert resp.json['counts'] == counts_dict
+        assert resp.json['choices'] == choices
+        assert resp.json['runs'] == runs
+        assert resp.json['counts'] == counts
 
-    def test_zero_responses(self):
+        get_runs_mock.assert_called_once_with(course_id, problem_id)
+        get_choices_mock.assert_called_once_with(problem_id)
+        get_counts_mock.assert_called_once_with(course_id, problem_id, runs, choices)
+
+    def test_zero_runs(self):
         """
-        If there is no response data there should still be valid answers
+        If there are no runs there should still be valid answers
         """
         problem_id = self.aside_instance.wrapped_block_usage_key
         problem = self.get_problem_by_id(problem_id)
@@ -278,3 +221,103 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.json['counts'] == {
             answer_id: {} for answer_id, _ in answers
         }
+
+    def test_get_choices_from_problem(self):
+        """
+        get_choices_from_problem should return a serialized representation of choices from a problem OLX
+        """
+        # The testing modulestore expects deprecated keys for some reason
+        course_id = self.aside_instance.course_key.replace(deprecated=True)
+        problem_id = self.aside_instance.wrapped_block_usage_key
+        # replace(deprecated=True) doesn't work for BlockUsageLocator
+        problem_id = BlockUsageLocator(course_id, problem_id.block_type, problem_id.block_id, deprecated=True)
+        with self.patch_modulestore():
+            assert get_choices_from_problem(problem_id) == [
+                {'answer_id': 'choice_0', 'answer_text': 'an incorrect answer'},
+                {'answer_id': 'choice_1', 'answer_text': 'the correct answer'},
+                {'answer_id': 'choice_2', 'answer_text': 'a different incorrect answer'},
+            ]
+
+    def test_get_counts_for_problem(self):
+        """
+        get_counts_for_problem should return histogram count data for a problem
+        """
+        course_id = self.aside_instance.course_key
+        problem_id = self.aside_instance.wrapped_block_usage_key
+
+        run1 = RapidResponseRun.objects.create(
+            course_key=course_id,
+            problem_usage_key=problem_id,
+            open=False
+        )
+        run2 = RapidResponseRun.objects.create(
+            course_key=course_id,
+            problem_usage_key=problem_id,
+            open=True
+        )
+        choices = [
+            {'answer_id': 'choice_0', 'answer_text': 'an incorrect answer'},
+            {'answer_id': 'choice_1', 'answer_text': 'the correct answer'},
+            {'answer_id': 'choice_2', 'answer_text': 'a different incorrect answer'},
+        ]
+        choices_lookup = {choice['answer_id']: choice['answer_text'] for choice in choices}
+        counts = list(zip(
+            [choices[i]['answer_id'] for i in range(3)],
+            range(2, 5),
+            [run1.id for _ in range(3)],
+        )) + list(zip(
+            [choices[i]['answer_id'] for i in range(3)],
+            [3, 0, 7],
+            [run2.id for _ in range(3)],
+        ))
+
+        counts_dict = defaultdict(dict)
+        for answer_id, count, run_id in counts:
+            counts_dict[answer_id][run_id] = count
+
+        for answer_id, num_submissions, run_id in counts:
+            answer_text = choices_lookup[answer_id]
+            for number in range(num_submissions):
+                username = 'user_{}_{}'.format(number, answer_id)
+                email = 'user{}{}@email.com'.format(number, answer_id)
+                user, _ = User.objects.get_or_create(
+                    username=username,
+                    email=email,
+                )
+
+                RapidResponseSubmission.objects.create(
+                    # For some reason the modulestore looks for a deprecated course key
+                    run=RapidResponseRun.objects.get(id=run_id),
+                    user_id=user.id,
+                    answer_id=answer_id,
+                    answer_text=answer_text,
+                    event={}
+                )
+
+        runs = get_runs(course_id, problem_id)
+
+        assert get_counts_for_problem(course_id, problem_id, runs, choices) == counts_dict
+
+    def test_get_runs(self):
+        """
+        get_runs should return a serialized representation of runs for a problem
+        """
+        course_id = self.aside_instance.course_key
+        problem_id = self.aside_instance.wrapped_block_usage_key
+
+        run1 = RapidResponseRun.objects.create(
+            course_key=course_id,
+            problem_usage_key=problem_id,
+            open=False
+        )
+        run2 = RapidResponseRun.objects.create(
+            course_key=course_id,
+            problem_usage_key=problem_id,
+            open=True
+        )
+
+        assert get_runs(course_id, problem_id) == [{
+            'id': run.id,
+            'created': run.created.isoformat(),
+            'open': run.open,
+        } for run in [run2, run1]]

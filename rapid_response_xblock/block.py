@@ -92,7 +92,7 @@ def get_choices_from_problem(problem_key):
     ]
 
 
-def get_serialized_runs(course_key, problem_usage_key):
+def get_runs(course_key, problem_usage_key):
     """
     Look up rapid response runs for a problem and return a serialized representation
 
@@ -233,7 +233,7 @@ class RapidResponseAside(XBlockAside):
         """
         Returns student responses for rapid-response-enabled block
         """
-        runs = get_serialized_runs(self.course_key, self.wrapped_block_usage_key)
+        runs = get_runs(self.course_key, self.wrapped_block_usage_key)
         # Only the most recent run should possibly be open
         is_open = runs[0]['open'] if runs else False
         choices = get_choices_from_problem(self.wrapped_block_usage_key)
