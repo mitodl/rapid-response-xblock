@@ -191,37 +191,6 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         get_choices_mock.assert_called_once_with(problem_id)
         get_counts_mock.assert_called_once_with(course_id, problem_id, runs, choices)
 
-    def test_zero_runs(self):
-        """
-        If there are no runs there should still be valid answers
-        """
-        problem_id = self.aside_instance.wrapped_block_usage_key
-        problem = self.get_problem_by_id(problem_id)
-        aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
-
-        with self.patch_modulestore():
-            resp = aside_block.responses()
-
-        assert resp.status_code == 200
-        assert resp.json['is_open'] is False
-
-        answers = [
-            ('choice_0', 'an incorrect answer'),
-            ('choice_1', 'the correct answer'),
-            ('choice_2', 'a different incorrect answer'),
-        ]
-
-        assert resp.json['choices'] == [
-            {
-                'answer_id': answer_id,
-                'answer_text': answer_text,
-            } for answer_id, answer_text in answers
-        ]
-        assert resp.json['runs'] == []
-        assert resp.json['counts'] == {
-            answer_id: {} for answer_id, _ in answers
-        }
-
     def test_get_choices_from_problem(self):
         """
         get_choices_from_problem should return a serialized representation of choices from a problem OLX
