@@ -1,16 +1,13 @@
 """Tests for the rapid-response aside logic"""
 from collections import defaultdict
 from ddt import data, ddt, unpack
-from mock import Mock, patch
+from mock import Mock, patch, PropertyMock
 
 from django.contrib.auth.models import User
 from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import BlockUsageLocator
 
 from rapid_response_xblock.block import (
-    get_choices_from_problem,
-    get_counts_for_problem,
-    serialize_runs,
     RapidResponseAside,
 )
 from rapid_response_xblock.models import (
@@ -175,10 +172,12 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         choices = 'choices'
 
         with patch(
-            'rapid_response_xblock.block.get_counts_for_problem', return_value=counts,
+            'rapid_response_xblock.block.RapidResponseAside.get_counts_for_problem', return_value=counts,
         ) as get_counts_mock, patch(
-            'rapid_response_xblock.block.get_choices_from_problem', return_value=choices
+            'rapid_response_xblock.block.RapidResponseAside.choices',
+            new_callable=PropertyMock
         ) as get_choices_mock:
+            get_choices_mock.return_value = choices
             resp = self.aside_instance.responses()
 
         run_queryset = RapidResponseRun.objects.order_by('-created')
@@ -186,23 +185,18 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.json['is_open'] is has_runs
 
         assert resp.json['choices'] == choices
-        assert resp.json['runs'] == serialize_runs(run_queryset)
+        assert resp.json['runs'] == RapidResponseAside.serialize_runs(run_queryset)
         assert resp.json['counts'] == counts
 
-        get_choices_mock.assert_called_once_with(problem_id)
+        get_choices_mock.assert_called_once_with()
         get_counts_mock.assert_called_once_with([run.id for run in run_queryset], choices)
 
-    def test_get_choices_from_problem(self):
+    def test_choices(self):
         """
-        get_choices_from_problem should return a serialized representation of choices from a problem OLX
+        RapidResponseAside.choices should return a serialized representation of choices from a problem OLX
         """
-        # The testing modulestore expects deprecated keys for some reason
-        course_id = self.aside_instance.course_key.replace(deprecated=True)
-        problem_id = self.aside_instance.wrapped_block_usage_key
-        # replace(deprecated=True) doesn't work for BlockUsageLocator
-        problem_id = BlockUsageLocator(course_id, problem_id.block_type, problem_id.block_id, deprecated=True)
         with self.patch_modulestore():
-            assert get_choices_from_problem(problem_id) == [
+            assert self.aside_instance.choices == [
                 {'answer_id': 'choice_0', 'answer_text': 'an incorrect answer'},
                 {'answer_id': 'choice_1', 'answer_text': 'the correct answer'},
                 {'answer_id': 'choice_2', 'answer_text': 'a different incorrect answer'},
@@ -266,7 +260,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
 
         run_ids = [run2.id, run1.id]
 
-        assert get_counts_for_problem(run_ids, choices) == counts_dict
+        assert RapidResponseAside.get_counts_for_problem(run_ids, choices) == counts_dict
 
     def test_serialize_runs(self):
         """
@@ -286,7 +280,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             open=True
         )
 
-        assert serialize_runs([run2, run1]) == [{
+        assert RapidResponseAside.serialize_runs([run2, run1]) == [{
             'id': run.id,
             'created': run.created.isoformat(),
             'open': run.open,

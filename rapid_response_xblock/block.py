@@ -71,72 +71,6 @@ def is_block_rapid_compatible(block):
     )
 
 
-def get_choices_from_problem(problem_key):
-    """
-    Look up choices from the problem XML
-
-    Args:
-        problem_key (UsageKey): The problem id
-
-    Returns:
-        list of dict: A list of answer id/answer text dicts, in the order the choices are listed in the XML
-    """
-    problem = modulestore().get_item(problem_key)
-    tree = problem.lcp.tree
-    choice_elements = tree.xpath('//choicegroup/choice')
-    return [
-        {
-            'answer_id': choice.get('name'),
-            'answer_text': choice.text,
-        } for choice in choice_elements
-    ]
-
-
-def serialize_runs(runs):
-    """
-    Look up rapid response runs for a problem and return a serialized representation
-
-    Args:
-        runs (iterable of RapidResponseRun): A queryset of RapidResponseRun
-
-    Returns:
-        list of dict: a list of serialized runs
-    """
-    return [
-        {
-            'id': run.id,
-            'created': run.created.isoformat(),
-            'open': run.open,
-        } for run in runs
-    ]
-
-
-def get_counts_for_problem(run_ids, choices):
-    """
-    Produce histogram count data for a given problem
-
-    Args:
-        run_ids (list of int): Serialized run id for the problem
-        choices (list of dict): Serialized choices
-
-    Returns:
-        dict:
-            A mapping of answer id => run id => count for that run
-    """
-    response_data = RapidResponseSubmission.objects.filter(
-        run__id__in=run_ids
-    ).values('answer_id', 'run').annotate(count=Count('answer_id'))
-    # Make sure every answer has a count and convert to JSON serializable format
-    response_counts = {(item['answer_id'], item['run']): item['count'] for item in response_data}
-
-    return {
-        choice['answer_id']: {
-            run_id: response_counts.get((choice['answer_id'], run_id), 0)
-            for run_id in run_ids
-        } for choice in choices
-    }
-
-
 LmsTemplateContext = namedtuple('LmsTemplateContext', ['is_staff', 'is_open'])
 
 
@@ -228,11 +162,14 @@ class RapidResponseAside(XBlockAside):
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
         ).order_by('-created')
-        runs = serialize_runs(run_querysets)
+        runs = self.serialize_runs(run_querysets)
         # Only the most recent run should possibly be open
         is_open = runs[0]['open'] if runs else False
-        choices = get_choices_from_problem(self.wrapped_block_usage_key)
-        counts = get_counts_for_problem([run['id'] for run in runs], choices)
+        choices = self.choices
+        counts = self.get_counts_for_problem(
+            [run['id'] for run in runs],
+            choices,
+        )
 
         return Response(json_body={
             'is_open': is_open,
@@ -268,3 +205,66 @@ class RapidResponseAside(XBlockAside):
             is_open=is_open,
             is_staff=self.is_staff()
         )._asdict()
+
+    @property
+    def choices(self):
+        """
+        Look up choices from the problem XML
+
+        Returns:
+            list of dict: A list of answer id/answer text dicts, in the order the choices are listed in the XML
+        """
+        problem = modulestore().get_item(self.wrapped_block_usage_key)
+        tree = problem.lcp.tree
+        choice_elements = tree.xpath('//choicegroup/choice')
+        return [
+            {
+                'answer_id': choice.get('name'),
+                'answer_text': choice.text,
+            } for choice in choice_elements
+        ]
+
+    @staticmethod
+    def serialize_runs(runs):
+        """
+        Look up rapid response runs for a problem and return a serialized representation
+
+        Args:
+            runs (iterable of RapidResponseRun): A queryset of RapidResponseRun
+
+        Returns:
+            list of dict: a list of serialized runs
+        """
+        return [
+            {
+                'id': run.id,
+                'created': run.created.isoformat(),
+                'open': run.open,
+            } for run in runs
+        ]
+
+    @staticmethod
+    def get_counts_for_problem(run_ids, choices):
+        """
+        Produce histogram count data for a given problem
+
+        Args:
+            run_ids (list of int): Serialized run id for the problem
+            choices (list of dict): Serialized choices
+
+        Returns:
+            dict:
+                A mapping of answer id => run id => count for that run
+        """
+        response_data = RapidResponseSubmission.objects.filter(
+            run__id__in=run_ids
+        ).values('answer_id', 'run').annotate(count=Count('answer_id'))
+        # Make sure every answer has a count and convert to JSON serializable format
+        response_counts = {(item['answer_id'], item['run']): item['count'] for item in response_data}
+
+        return {
+            choice['answer_id']: {
+                run_id: response_counts.get((choice['answer_id'], run_id), 0)
+                for run_id in run_ids
+            } for choice in choices
+        }
