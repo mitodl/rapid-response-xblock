@@ -225,15 +225,15 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             {'answer_id': 'choice_2', 'answer_text': 'a different incorrect answer'},
         ]
         choices_lookup = {choice['answer_id']: choice['answer_text'] for choice in choices}
-        counts = list(zip(
+        counts = zip(
             [choices[i]['answer_id'] for i in range(3)],
             range(2, 5),
             [run1.id for _ in range(3)],
-        )) + list(zip(
+        ) + zip(
             [choices[i]['answer_id'] for i in range(3)],
             [3, 0, 7],
             [run2.id for _ in range(3)],
-        ))
+        )
 
         counts_dict = defaultdict(dict)
         for answer_id, num_submissions, run_id in counts:
