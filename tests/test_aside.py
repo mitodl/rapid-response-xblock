@@ -5,6 +5,7 @@ from mock import Mock, patch, PropertyMock
 
 from django.contrib.auth.models import User
 from opaque_keys.edx.keys import UsageKey
+from student.tests.factories import UserFactory
 
 from rapid_response_xblock.block import (
     RapidResponseAside,
@@ -240,12 +241,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
 
             answer_text = choices_lookup[answer_id]
             for number in range(num_submissions):
-                username = 'user_{}_{}'.format(number, answer_id)
-                email = 'user{}{}@email.com'.format(number, answer_id)
-                user, _ = User.objects.get_or_create(
-                    username=username,
-                    email=email,
-                )
+                user = UserFactory.create()
 
                 RapidResponseSubmission.objects.create(
                     # For some reason the modulestore looks for a deprecated course key
