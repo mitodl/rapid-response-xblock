@@ -239,7 +239,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             counts_dict[answer_id][run_id] = num_submissions
 
             answer_text = choices_lookup[answer_id]
-            for number in range(num_submissions):
+            for _ in range(num_submissions):
                 user = UserFactory.create()
 
                 RapidResponseSubmission.objects.create(
