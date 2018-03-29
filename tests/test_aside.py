@@ -236,10 +236,9 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         ))
 
         counts_dict = defaultdict(dict)
-        for answer_id, count, run_id in counts:
-            counts_dict[answer_id][run_id] = count
-
         for answer_id, num_submissions, run_id in counts:
+            counts_dict[answer_id][run_id] = num_submissions
+
             answer_text = choices_lookup[answer_id]
             for number in range(num_submissions):
                 username = 'user_{}_{}'.format(number, answer_id)
