@@ -3,6 +3,20 @@
 
   // time between polls of responses API
   var POLLING_MILLIS = 3000;
+  // color palette for bars
+  var PALETTE = [
+    '#1e73ae',
+    '#dddb32',
+    '#2b9b2b',
+    '#e1516f',
+    '#08cdf1',
+    '#a964d4',
+    '#505050',
+    '#f77b0e',
+    '#472ecc',
+    '#7cce40',
+    '#876a16'
+  ];
 
   function RapidResponseAsideView(runtime, element) {
     var toggleStatusUrl = runtime.handlerUrl(element, 'toggle_block_open_status');
@@ -174,7 +188,7 @@
         })]
       );
       // Create a color scale similar to the x scale to provide colors for each bar
-      var color = d3.scaleOrdinal(d3.schemeCategory10).domain(histogramAnswerIds);
+      var color = d3.scaleOrdinal(PALETTE).domain(histogramAnswerIds);
 
       // The D3 data join. This matches the histogram data to the rect elements
       // (there is a __data__ attribute on each rect keeping track of this). Also tell D3 to use the answer_id to make
