@@ -19,7 +19,9 @@
     var state = {
       is_open: false,
       is_staff: false,
-      response_data: []
+      runs: [],
+      choices: [],
+      counts: {}
     };
 
     /**
@@ -135,7 +137,23 @@
      * @param {Object} state The current rendering state
      */
     function renderD3(state) {
-      var histogram = state.response_data;
+      var runs = state.runs;
+      var counts = state.counts;
+      var choices = state.choices;
+
+      // HACK: only show the latest run for now
+      var mostRecentRun = null;
+      if (runs.length > 0) {
+        mostRecentRun = runs[0].id;
+      }
+
+      var histogram = choices.map(function (item) {
+        return {
+          answer_id: item.answer_id,
+          answer_text: item.answer_text,
+          count: counts[item.answer_id][mostRecentRun] || 0
+        }
+      });
 
       // Compute responses into information suitable for a bar graph.
       var histogramAnswerIds = _.pluck(histogram, 'answer_id');

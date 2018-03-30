@@ -1,17 +1,16 @@
 """Tests for the rapid-response aside logic"""
+from collections import defaultdict
 from ddt import data, ddt, unpack
-from mock import Mock, patch
+from mock import Mock, patch, PropertyMock
 
-from django.contrib.auth.models import User
-from django.test.client import RequestFactory
 from opaque_keys.edx.keys import UsageKey
-from opaque_keys.edx.locator import BlockUsageLocator
-from openedx.core.lib.xblock_utils import get_aside_from_xblock
-import pytest
+from student.tests.factories import UserFactory
 
-from rapid_response_xblock.block import RapidResponseAside
+from rapid_response_xblock.block import (
+    RapidResponseAside,
+)
 from rapid_response_xblock.models import (
-    RapidResponseBlockStatus,
+    RapidResponseRun,
     RapidResponseSubmission,
 )
 from tests.utils import (
@@ -64,19 +63,37 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
 
     def test_toggle_block_open(self):
         """Test that toggle_block_open_status changes the status of a rapid response block"""
-        block_status = RapidResponseBlockStatus.objects.create(
-            problem_usage_key=self.aside_instance.wrapped_block_usage_key,
-            course_key=self.aside_instance.course_key
+        usage_key = self.aside_instance.wrapped_block_usage_key
+        course_key = self.aside_instance.course_key
+        run = RapidResponseRun.objects.create(
+            problem_usage_key=usage_key,
+            course_key=course_key,
         )
-        assert block_status.open is False
+        assert run.open is False
 
         self.aside_instance.toggle_block_open_status(Mock())
-        block_status.refresh_from_db()
-        assert block_status.open is True
+        assert RapidResponseRun.objects.count() == 2
+        assert RapidResponseRun.objects.filter(
+            problem_usage_key=usage_key,
+            course_key=course_key,
+            open=True
+        ).exists() is True
 
         self.aside_instance.toggle_block_open_status(Mock())
-        block_status.refresh_from_db()
-        assert block_status.open is False
+        assert RapidResponseRun.objects.count() == 2
+        assert RapidResponseRun.objects.filter(
+            problem_usage_key=usage_key,
+            course_key=course_key,
+            open=True
+        ).exists() is False
+
+        self.aside_instance.toggle_block_open_status(Mock())
+        assert RapidResponseRun.objects.count() == 3
+        assert RapidResponseRun.objects.filter(
+            problem_usage_key=usage_key,
+            course_key=course_key,
+            open=True
+        ).exists() is True
 
     def test_toggle_block_enabled(self):
         """
@@ -119,7 +136,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         """
         Test that the responses API shows whether the problem is open
         """
-        RapidResponseBlockStatus.objects.create(
+        RapidResponseRun.objects.create(
             problem_usage_key=self.aside_instance.wrapped_block_usage_key,
             course_key=self.aside_instance.course_key,
             open=is_open,
@@ -130,84 +147,134 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.status_code == 200
         assert resp.json['is_open'] == is_open
 
-    @pytest.mark.usefixtures("example_event")
-    def test_responses(self):
+    @data(True, False)
+    def test_responses(self, has_runs):
         """
         Test that the responses API will show recorded events during the open period
         """
-        # The testing modulestore expects deprecated keys for some reason
-        course_id = self.aside_instance.course_key.replace(deprecated=True)
+        course_id = self.aside_instance.course_key
         problem_id = self.aside_instance.wrapped_block_usage_key
-        # replace(deprecated=True) doesn't work for BlockUsageLocator
-        problem_id = BlockUsageLocator(course_id, problem_id.block_type, problem_id.block_id, deprecated=True)
 
-        # This problem is imported into the modulestore in the setup method.
-        # It needs to be present there to allow the view function to look up problem data.
-        request = RequestFactory().request()
-        request.user = self.instructor
-        request.session = request.environ
-        problem = self.get_problem_by_id(problem_id)
-        aside_block = get_aside_from_xblock(problem, self.aside_usage_key.aside_type)
+        if has_runs:
+            RapidResponseRun.objects.create(
+                course_key=course_id,
+                problem_usage_key=problem_id,
+                open=False
+            )
+            RapidResponseRun.objects.create(
+                course_key=course_id,
+                problem_usage_key=problem_id,
+                open=True
+            )
 
-        answer_id_text_counts = zip(
-            range(3),
-            [
-                'an incorrect answer',
-                'the correct answer',
-                'a different incorrect answer',
-            ],
-            range(2, 5),
+        counts = 'counts'
+        choices = 'choices'
+
+        with patch(
+            'rapid_response_xblock.block.RapidResponseAside.get_counts_for_problem', return_value=counts,
+        ) as get_counts_mock, patch(
+            'rapid_response_xblock.block.RapidResponseAside.choices',
+            new_callable=PropertyMock
+        ) as get_choices_mock:
+            get_choices_mock.return_value = choices
+            resp = self.aside_instance.responses()
+
+        run_queryset = RapidResponseRun.objects.order_by('-created')
+        assert resp.status_code == 200
+        assert resp.json['is_open'] is has_runs
+
+        assert resp.json['choices'] == choices
+        assert resp.json['runs'] == RapidResponseAside.serialize_runs(run_queryset)
+        assert resp.json['counts'] == counts
+
+        get_choices_mock.assert_called_once_with()
+        get_counts_mock.assert_called_once_with([run.id for run in run_queryset], choices)
+
+    def test_choices(self):
+        """
+        RapidResponseAside.choices should return a serialized representation of choices from a problem OLX
+        """
+        with self.patch_modulestore():
+            assert self.aside_instance.choices == [
+                {'answer_id': 'choice_0', 'answer_text': 'an incorrect answer'},
+                {'answer_id': 'choice_1', 'answer_text': 'the correct answer'},
+                {'answer_id': 'choice_2', 'answer_text': 'a different incorrect answer'},
+            ]
+
+    def test_get_counts_for_problem(self):
+        """
+        get_counts_for_problem should return histogram count data for a problem
+        """
+        course_id = self.aside_instance.course_key
+        problem_id = self.aside_instance.wrapped_block_usage_key
+
+        run1 = RapidResponseRun.objects.create(
+            course_key=course_id,
+            problem_usage_key=problem_id,
+            open=False
         )
-        answer_data = [
-            {
-                'answer_id': 'choice_{}'.format(i),
-                'answer_text': text,
-            }
-            for i, text, _ in answer_id_text_counts
+        run2 = RapidResponseRun.objects.create(
+            course_key=course_id,
+            problem_usage_key=problem_id,
+            open=True
+        )
+        choices = [
+            {'answer_id': 'choice_0', 'answer_text': 'an incorrect answer'},
+            {'answer_id': 'choice_1', 'answer_text': 'the correct answer'},
+            {'answer_id': 'choice_2', 'answer_text': 'a different incorrect answer'},
         ]
-        counts = {'choice_{}'.format(ans_id): ans_count for ans_id, _, ans_count in answer_id_text_counts}
+        choices_lookup = {choice['answer_id']: choice['answer_text'] for choice in choices}
+        counts = zip(
+            [choices[i]['answer_id'] for i in range(3)],
+            range(2, 5),
+            [run1.id for _ in range(3)],
+        ) + zip(
+            [choices[i]['answer_id'] for i in range(3)],
+            [3, 0, 7],
+            [run2.id for _ in range(3)],
+        )
 
-        for item in answer_data:
-            for number in range(counts[item['answer_id']]):
-                username = 'user_{}_{}'.format(number, item['answer_id'])
-                email = 'user{}{}@email.com'.format(number, item['answer_id'])
-                user = User.objects.create(
-                    username=username,
-                    email=email,
-                )
+        counts_dict = defaultdict(dict)
+        for answer_id, num_submissions, run_id in counts:
+            counts_dict[answer_id][run_id] = num_submissions
+
+            answer_text = choices_lookup[answer_id]
+            for _ in range(num_submissions):
+                user = UserFactory.create()
 
                 RapidResponseSubmission.objects.create(
                     # For some reason the modulestore looks for a deprecated course key
-                    course_key=course_id,
-                    problem_usage_key=problem_id,
+                    run=RapidResponseRun.objects.get(id=run_id),
                     user_id=user.id,
-                    answer_id=item['answer_id'],
-                    answer_text=item['answer_text'],
+                    answer_id=answer_id,
+                    answer_text=answer_text,
                     event={}
                 )
 
-        # create another submission which has a different problem id and won't be included in the results
-        user = User.objects.create(
-            username='user_missing',
-            email='user@user.user'
-        )
-        RapidResponseSubmission.objects.create(
+        run_ids = [run2.id, run1.id]
+
+        assert RapidResponseAside.get_counts_for_problem(run_ids, choices) == counts_dict
+
+    def test_serialize_runs(self):
+        """
+        serialize_runs should return a serialized representation of runs for a problem
+        """
+        course_id = self.aside_instance.course_key
+        problem_id = self.aside_instance.wrapped_block_usage_key
+
+        run1 = RapidResponseRun.objects.create(
             course_key=course_id,
-            problem_usage_key=UsageKey.from_string(unicode(problem_id) + "extra"),
-            user_id=user.id,
-            answer_id=answer_data[0]['answer_id'],
-            answer_text=answer_data[0]['answer_text'],
-            event={}
+            problem_usage_key=problem_id,
+            open=False
+        )
+        run2 = RapidResponseRun.objects.create(
+            course_key=course_id,
+            problem_usage_key=problem_id,
+            open=True
         )
 
-        with self.patch_modulestore():
-            resp = aside_block.responses()
-
-        assert resp.status_code == 200
-        assert resp.json['is_open'] is False
-
-        assert resp.json['response_data'] == [{
-            'count': counts[item['answer_id']],
-            'answer_id': item['answer_id'],
-            'answer_text': item['answer_text'],
-        } for item in answer_data]
+        assert RapidResponseAside.serialize_runs([run2, run1]) == [{
+            'id': run.id,
+            'created': run.created.isoformat(),
+            'open': run.open,
+        } for run in [run2, run1]]

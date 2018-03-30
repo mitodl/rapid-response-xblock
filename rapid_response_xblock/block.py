@@ -15,7 +15,7 @@ from xblock.fields import Scope, Boolean
 from xmodule.modulestore.django import modulestore
 
 from rapid_response_xblock.models import (
-    RapidResponseBlockStatus,
+    RapidResponseRun,
     RapidResponseSubmission,
 )
 
@@ -62,6 +62,9 @@ def staff_only(handler_method):
 
 
 def is_block_rapid_compatible(block):
+    """
+    Returns true if rapid response can support this block
+    """
     return (
         len(block.problem_types) == 1 and
         'multiplechoiceresponse' in block.problem_types
@@ -126,15 +129,17 @@ class RapidResponseAside(XBlockAside):
         Toggles the open/closed status for the rapid-response-enabled block
         """
         with transaction.atomic():
-            status, _ = RapidResponseBlockStatus.objects.get_or_create(
+            run, is_new = RapidResponseRun.objects.get_or_create(
                 problem_usage_key=self.wrapped_block_usage_key,
-                course_key=self.course_key
+                course_key=self.course_key,
+                open=True
             )
-            status.open = not bool(status.open)
-            status.save()
+            if not is_new:
+                run.open = False
+                run.save()
         return Response(
             json_body=LmsTemplateContext(
-                is_open=status.open,
+                is_open=run.open,
                 is_staff=self.is_staff()
             )._asdict()
         )
@@ -153,31 +158,24 @@ class RapidResponseAside(XBlockAside):
         """
         Returns student responses for rapid-response-enabled block
         """
-        status = RapidResponseBlockStatus.objects.filter(
-            problem_usage_key=self.wrapped_block_usage_key,
-            course_key=self.course_key
-        ).first()
-        is_open = False if not status else status.open
-        response_data = RapidResponseSubmission.objects.filter(
+        run_querysets = RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
-        ).values('answer_id').annotate(count=Count('answer_id'))
-        response_counts = {item['answer_id']: item['count'] for item in response_data}
-
-        problem = modulestore().get_item(self.wrapped_block_usage_key)
-        tree = problem.lcp.tree
-        choice_elements = tree.xpath('//choicegroup/choice')
-        choices = [
-            {
-                'answer_id': choice.get("name"),
-                'answer_text': choice.text,
-                'count': response_counts.get(choice.get("name"), 0)
-            } for choice in choice_elements
-        ]
+        ).order_by('-created')
+        runs = self.serialize_runs(run_querysets)
+        # Only the most recent run should possibly be open
+        is_open = runs[0]['open'] if runs else False
+        choices = self.choices
+        counts = self.get_counts_for_problem(
+            [run['id'] for run in runs],
+            choices,
+        )
 
         return Response(json_body={
             'is_open': is_open,
-            'response_data': choices,
+            'runs': runs,
+            'choices': choices,
+            'counts': counts,
         })
 
     @property
@@ -198,12 +196,75 @@ class RapidResponseAside(XBlockAside):
         """
         Gets the template context object for the aside when it's first loaded
         """
-        status = RapidResponseBlockStatus.objects.filter(
+        is_open = RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
-            course_key=self.course_key
-        ).first()
-        is_open = False if not status else status.open
+            course_key=self.course_key,
+            open=True
+        ).exists()
         return LmsTemplateContext(
             is_open=is_open,
             is_staff=self.is_staff()
         )._asdict()
+
+    @property
+    def choices(self):
+        """
+        Look up choices from the problem XML
+
+        Returns:
+            list of dict: A list of answer id/answer text dicts, in the order the choices are listed in the XML
+        """
+        problem = modulestore().get_item(self.wrapped_block_usage_key)
+        tree = problem.lcp.tree
+        choice_elements = tree.xpath('//choicegroup/choice')
+        return [
+            {
+                'answer_id': choice.get('name'),
+                'answer_text': choice.text,
+            } for choice in choice_elements
+        ]
+
+    @staticmethod
+    def serialize_runs(runs):
+        """
+        Look up rapid response runs for a problem and return a serialized representation
+
+        Args:
+            runs (iterable of RapidResponseRun): A queryset of RapidResponseRun
+
+        Returns:
+            list of dict: a list of serialized runs
+        """
+        return [
+            {
+                'id': run.id,
+                'created': run.created.isoformat(),
+                'open': run.open,
+            } for run in runs
+        ]
+
+    @staticmethod
+    def get_counts_for_problem(run_ids, choices):
+        """
+        Produce histogram count data for a given problem
+
+        Args:
+            run_ids (list of int): Serialized run id for the problem
+            choices (list of dict): Serialized choices
+
+        Returns:
+            dict:
+                A mapping of answer id => run id => count for that run
+        """
+        response_data = RapidResponseSubmission.objects.filter(
+            run__id__in=run_ids
+        ).values('answer_id', 'run').annotate(count=Count('answer_id'))
+        # Make sure every answer has a count and convert to JSON serializable format
+        response_counts = {(item['answer_id'], item['run']): item['count'] for item in response_data}
+
+        return {
+            choice['answer_id']: {
+                run_id: response_counts.get((choice['answer_id'], run_id), 0)
+                for run_id in run_ids
+            } for choice in choices
+        }

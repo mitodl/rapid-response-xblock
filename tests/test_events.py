@@ -13,7 +13,7 @@ from xmodule.modulestore.django import modulestore
 
 from rapid_response_xblock.logger import SubmissionRecorder
 from rapid_response_xblock.models import (
-    RapidResponseBlockStatus,
+    RapidResponseRun,
     RapidResponseSubmission,
 )
 from tests.utils import (
@@ -34,7 +34,7 @@ class TestEvents(RuntimeEnabledTestCase):
         self.scope_ids = make_scope_ids(self.runtime, self.descriptor)
 
         # For the test_data course
-        self.test_data_status = RapidResponseBlockStatus.objects.create(
+        self.test_data_status = RapidResponseRun.objects.create(
             problem_usage_key=UsageKey.from_string(
                 "i4x://SGAU/SGA101/problem/2582bbb68672426297e525b49a383eb8"
             ),
@@ -48,7 +48,7 @@ class TestEvents(RuntimeEnabledTestCase):
         usage_key = UsageKey.from_string(
             "block-v1:ReplaceStatic+ReplaceStatic+2018_T1+type@problem+block@2582bbb68672426297e525b49a383eb8"
         )
-        self.example_status = RapidResponseBlockStatus.objects.create(
+        self.example_status = RapidResponseRun.objects.create(
             problem_usage_key=usage_key,
             course_key=usage_key.course_key,
             open=True,
@@ -126,8 +126,8 @@ class TestEvents(RuntimeEnabledTestCase):
         assert RapidResponseSubmission.objects.count() == 1
         obj = RapidResponseSubmission.objects.first()
         assert obj.user_id == self.instructor.id
-        assert obj.course_key == self.course.course_id
-        assert obj.problem_usage_key.map_into_course(
+        assert obj.run.course_key == self.course.course_id
+        assert obj.run.problem_usage_key.map_into_course(
             self.course.course_id
         ) == problem.location
         assert obj.answer_text == expected_answer_text
@@ -148,8 +148,8 @@ class TestEvents(RuntimeEnabledTestCase):
         assert RapidResponseSubmission.objects.count() == 1
         obj = RapidResponseSubmission.objects.first()
         assert obj.user_id == self.instructor.id
-        assert obj.course_key == self.course.course_id
-        assert obj.problem_usage_key.map_into_course(
+        assert obj.run.course_key == self.course.course_id
+        assert obj.run.problem_usage_key.map_into_course(
             self.course.course_id
         ) == problem.location
         # Answer is the first one clicked
@@ -163,10 +163,10 @@ class TestEvents(RuntimeEnabledTestCase):
         assert RapidResponseSubmission.objects.count() == 1
         obj = RapidResponseSubmission.objects.first()
         assert obj.user_id == example_event_data['context']['user_id']
-        assert obj.problem_usage_key == UsageKey.from_string(
+        assert obj.run.problem_usage_key == UsageKey.from_string(
             example_event_data['event']['problem_id']
         )
-        assert obj.course_key == CourseLocator.from_string(
+        assert obj.run.course_key == CourseLocator.from_string(
             example_event_data['context']['course_id']
         )
         # Answer is the first one clicked
