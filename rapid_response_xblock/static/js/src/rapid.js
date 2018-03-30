@@ -255,8 +255,24 @@
       chart.select(".yaxis")
         .transition() // transition to match the bar update
         .call(
-          d3.axisLeft(y).tickValues(yTickValues).tickFormat(d3.format("d"))
-        );
+          d3.axisLeft(y)
+            .tickValues(yTickValues)
+            .tickFormat(d3.format("d"))
+            .tickSize(-ChartSettings.width)
+        )
+        .selectAll(".tick")
+        .attr("stroke-dasharray", "8,8");
+
+      // strangely, the default path has a line at the side and one at the top
+      // we just want the one on the side
+      chart.select(".yaxis .domain").remove();
+      chart.select(".yaxis .line").remove();
+      chart.select(".yaxis")
+        .append("line")
+        .classed("line", true)
+        .attr("stroke", "#000")
+        .attr("x2", 0.5)
+        .attr("y2", ChartSettings.height);
     }
 
     /**
