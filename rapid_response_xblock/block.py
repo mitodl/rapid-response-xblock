@@ -215,10 +215,9 @@ class RapidResponseAside(XBlockAside):
             course_key=self.course_key,
             open=True
         ).exists()
-        return LmsTemplateContext(
-            is_open=is_open,
-            is_staff=self.is_staff()
-        )._asdict()
+        return {
+            'is_open': is_open,
+        }
 
     @property
     def choices(self):

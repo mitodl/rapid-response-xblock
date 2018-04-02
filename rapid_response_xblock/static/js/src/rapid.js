@@ -34,11 +34,13 @@
     // default values
     var state = {
       is_open: false,
-      is_staff: false,
+      timerOn: false,
       runs: [],
       choices: [],
       counts: {},
-      selectedRuns: [null]  // one per chart. null means select the latest one
+      selectedRuns: [null],  // one per chart. null means select the latest one
+      lastPoll: null,
+      isPolling: false
     };
 
     /**
@@ -46,21 +48,43 @@
      */
     function render() {
       var $rapidBlockContent = $element.find(rapidBlockContentSel);
-      $rapidBlockContent.html(toggleTemplate(state));
+      var pollSeconds = 0, pollMinutes = 0;
+      if (state.runs.length > 0 && state.timerOn && state.is_open) {
+        var lastPoll = moment(state.runs[0].created);
+        var now = moment();
+        var totalSeconds = Math.floor(now.diff(lastPoll) / 1000);
+        pollSeconds = totalSeconds % 60;
+        pollMinutes = Math.floor(totalSeconds / 60);
+      }
+      var templateState = _.assign({}, state, {
+        pollSeconds: pollSeconds,
+        pollMinutes: pollMinutes
+      });
+      $rapidBlockContent.html(toggleTemplate(templateState));
       renderChartContainer();
 
       $rapidBlockContent.find(problemStatusBtnSel).click(function() {
+        // disable the button temporarily to prevent double clicks
+        $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", true);
         $.post(toggleStatusUrl).then(
           function(newState) {
             // Selected runs should be reset when the open status is changed
+            $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", false);
+
+            // if the button to toggle this is visible there should only be one chart, so
+            // selectedRuns just replaces the existing one
             state = _.assign({}, state, newState, {
-              selectedRuns: [null]
+              selectedRuns: [null],
+              lastPoll: null
             });
-            render();
 
             if (state.is_open) {
               pollForResponses();
+            } else {
+              state.timerOn = false;
             }
+
+            render();
           }
         );
       });
@@ -475,25 +499,36 @@
      * If the problem is open, schedule another poll using this function.
      */
     function pollForResponses() {
-      $.get(responsesUrl).then(function(newState) {
-        state = _.assign({}, state, newState);
+      if (state.is_open) {
+        setTimeout(pollForResponses, 1000);
+      }
 
+      // make sure this updates at least once a second
+      render();
+      if (state.isPolling) {
+        // API call is already in progress
+        return;
+      }
+
+      if (state.lastPoll !== null && moment().diff(moment(state.lastPoll)) < POLLING_MILLIS) {
+        // too soon, check again next poll
+        return;
+      }
+
+      state.isPolling = true;
+      $.get(responsesUrl).then(function(newState) {
+        state = _.assign({}, state, newState, {
+          isPolling: false,
+          lastPoll: moment().format(),
+          timerOn: state.is_open
+        });
         render();
-        if (state.is_open) {
-          setTimeout(pollForResponses, POLLING_MILLIS);
-        }
-      }).fail(function () {
-        // TODO: try again?
-        console.error("Error retrieving response data");
       });
     }
 
     $(function($) { // onLoad
       var block = $element.find(rapidTopLevelSel);
-      _.assign(state, {
-        is_open: block.attr('data-open') === 'True',
-        is_staff: block.attr('data-staff') === 'True'
-      });
+      state.is_open = block.attr('data-open') === 'True';
       render();
 
       // adjust graph for each rerender
@@ -501,9 +536,7 @@
         render();
       });
 
-      if (state.is_staff) {
-        pollForResponses();
-      }
+      pollForResponses();
     });
   }
 
