@@ -41,5 +41,8 @@ setup(
         'lms.djangoapp': [
             'rapid_response_xblock = rapid_response_xblock.apps:RapidResponseAppConfig'
         ],
+        'cms.djangoapp': [
+            'rapid_response_xblock = rapid_response_xblock.apps:RapidResponseAppConfig'
+        ],
     }
 )

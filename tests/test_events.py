@@ -209,19 +209,19 @@ class TestEvents(RuntimeEnabledTestCase):
         If there is more than one submission in the event,
         no event should be recorded
         """
-        key = '2582bbb68672426297e525b49a383eb8_2_1'
-        submission = self.example_event['event']['submission'][key]
-        self.example_event['event']['submission']['second'] = submission
+        submission = self.example_event['event']['submission'].values()[0]
+        self.example_event['event']['submission']['new_key'] = submission
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
 
-    def test_no_submission(self):
+    @data(None, {})
+    def test_no_submission(self, submission_value):
         """
-        If there is more than one submission in the event,
+        If there is no submission or an empty submission in the event,
         no event should be recorded
         """
-        key = '2582bbb68672426297e525b49a383eb8_2_1'
-        self.example_event['event']['submission'][key] = None
+        key = self.example_event['event']['submission'].keys()[0]
+        self.example_event['event']['submission'][key] = submission_value
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
 

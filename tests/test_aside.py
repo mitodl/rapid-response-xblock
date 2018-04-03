@@ -8,6 +8,8 @@ from student.tests.factories import UserFactory
 
 from rapid_response_xblock.block import (
     RapidResponseAside,
+    BLOCK_PROBLEM_CATEGORY,
+    MULTIPLE_CHOICE_TYPE,
 )
 from rapid_response_xblock.models import (
     RapidResponseRun,
@@ -50,6 +52,27 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         # non-empty content and should specify a JS initialization function
         assert bool(fragment.content) is should_render_aside
         assert (fragment.js_init_fn == 'RapidResponseAsideInit') is should_render_aside
+
+    @data(*[
+        [BLOCK_PROBLEM_CATEGORY, {MULTIPLE_CHOICE_TYPE}, None, True],
+        [BLOCK_PROBLEM_CATEGORY, None, Mock(problem_types={MULTIPLE_CHOICE_TYPE}), True],
+        [None, {MULTIPLE_CHOICE_TYPE}, None, False],
+        ['invalid_category', {MULTIPLE_CHOICE_TYPE}, None, False],
+        [BLOCK_PROBLEM_CATEGORY, {'invalid_problem_type'}, None, False],
+        [BLOCK_PROBLEM_CATEGORY, {MULTIPLE_CHOICE_TYPE, 'invalid_problem_type'}, None, False],
+    ])
+    @unpack
+    def test_should_apply_to_block(self, block_category, block_problem_types, block_descriptor, should_apply):
+        """
+        Test that should_apply_to_block only returns True for multiple choice problem blocks
+        """
+        block = Mock(category=block_category, problem_types=block_problem_types, descriptor=block_descriptor)
+        # `should_apply_to_block` uses `hasattr` to inspect the block object, and that
+        # always returns True for Mock objects unless the attribute names are explicitly deleted.
+        for block_attr in ['category', 'descriptor', 'problem_types']:
+            if getattr(block, block_attr) is None:
+                delattr(block, block_attr)
+        assert self.aside_instance.should_apply_to_block(block) is should_apply
 
     @data(True, False)
     def test_studio_view(self, enabled_value):

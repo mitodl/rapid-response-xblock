@@ -61,16 +61,8 @@ def staff_only(handler_method):
     return wrapper
 
 
-def is_block_rapid_compatible(block):
-    """
-    Returns true if rapid response can support this block
-    """
-    return (
-        len(block.problem_types) == 1 and
-        'multiplechoiceresponse' in block.problem_types
-    )
-
-
+BLOCK_PROBLEM_CATEGORY = u'problem'
+MULTIPLE_CHOICE_TYPE = 'multiplechoiceresponse'
 LmsTemplateContext = namedtuple('LmsTemplateContext', ['is_staff', 'is_open'])
 
 
@@ -177,6 +169,28 @@ class RapidResponseAside(XBlockAside):
             'choices': choices,
             'counts': counts,
         })
+
+    @classmethod
+    def should_apply_to_block(cls, block):
+        """
+        Overrides base XBlockAside implementation. Indicates whether or not this aside should
+        apply to a given block.
+
+        Due to the different ways that the Studio and LMS runtimes construct XBlock instances,
+        the problem type of the given block needs to be retrieved in different ways.
+        """
+        if getattr(block, 'category', None) != BLOCK_PROBLEM_CATEGORY:
+            return False
+        block_problem_types = None
+        # LMS passes in the block instance with `problem_types` as a property of `descriptor`
+        if hasattr(block, 'descriptor'):
+            block_problem_types = getattr(block.descriptor, 'problem_types', None)
+        # Studio passes in the block instance with `problem_types` as a top-level property
+        elif hasattr(block, 'problem_types'):
+            block_problem_types = block.problem_types
+        # We only want this aside to apply to the block if the problem is multiple choice
+        # AND there are not multiple problem types.
+        return block_problem_types == {MULTIPLE_CHOICE_TYPE}
 
     @property
     def wrapped_block_usage_key(self):

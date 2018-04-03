@@ -3,6 +3,7 @@ Capture events
 """
 from __future__ import absolute_import
 import logging
+from collections import namedtuple
 
 from django.db import transaction
 from opaque_keys.edx.keys import UsageKey
@@ -13,9 +14,14 @@ from rapid_response_xblock.models import (
     RapidResponseRun,
     RapidResponseSubmission,
 )
+from rapid_response_xblock.block import MULTIPLE_CHOICE_TYPE
 
 
 log = logging.getLogger(__name__)
+SubmissionEvent = namedtuple(
+    'SubmissionEvent',
+    ['raw_data', 'user_id', 'problem_usage_key', 'course_key', 'answer_text', 'answer_id']
+)
 
 
 class SubmissionRecorder(BaseBackend):
@@ -27,58 +33,72 @@ class SubmissionRecorder(BaseBackend):
     http://edx.readthedocs.io/projects/devdata/en/stable/
     internal_data_formats/tracking_logs.html
     """
+    @staticmethod
+    def parse_submission_event(event):
+        """
+        Attempts to parse raw event data as an answer submission for the problem types
+        that rapid-response can be applied to. If the event is not an answer submission,
+        or the given problem type is not applicable for rapid-response, None is returned.
+
+        Args:
+            event (dict): Raw event data
+
+        Returns:
+             SubmissionEvent: The parsed submission event data (or None)
+        """
+        # Ignore if this event was not the submission of an answer
+        if event['event_type'] != 'problem_check':
+            return None
+        # Ignore if there were multiple submissions represented in this single event
+        event_submissions = event['event']['submission']
+        if len(event_submissions) > 1:
+            return None
+        submission_key, submission = event_submissions.items()[0]
+        # Ignore if the problem being answered has a blank submission or is not multiple choice
+        if not submission or submission.get('response_type') != MULTIPLE_CHOICE_TYPE:
+            return None
+
+        try:
+            return SubmissionEvent(
+                raw_data=event,
+                user_id=event['context']['user_id'],
+                problem_usage_key=UsageKey.from_string(
+                    event['event']['problem_id']
+                ),
+                course_key=CourseLocator.from_string(
+                    event['context']['course_id']
+                ),
+                answer_text=submission['answer'],
+                answer_id=event['event']['answers'][submission_key]
+            )
+        except:  # pylint: disable=bare-except
+            log.exception("Unable to parse event data as a submission: %s", event)
 
     def send(self, event):
-        # TODO: feature flag whitelisting valid problems
-        if event['event_type'] == 'problem_check':
-            try:
-                user_id = event['context']['user_id']
-                problem_id = UsageKey.from_string(
-                    event['event']['problem_id']
-                )
-                # problem_id.course_id may have a missing run
-                # so we need to grab the course key separately
-                course_key = CourseLocator.from_string(
-                    event['context']['course_id']
-                )
+        sub = self.parse_submission_event(event)
+        # If the event could not be parsed or was the wrong type, ignore it
+        if sub is None:
+            return
 
-                # This is assuming the event only includes information
-                # for one answer at a time
-                submission = event['event']['submission']
-                keys = list(submission.keys())
-                if len(keys) != 1:
-                    # Not sure if this case is possible
-                    raise Exception(
-                        "Expected only one answer in problem_check event"
-                    )
+        open_run = RapidResponseRun.objects.filter(
+            problem_usage_key=sub.problem_usage_key,
+            course_key=sub.course_key,
+            open=True
+        ).first()
+        if not open_run:
+            # Problem is not open
+            return
 
-                submission_key = keys[0]
-
-                answer_text = submission[submission_key]['answer']
-                answer_id = event['event']['answers'][submission_key]
-
-                open_run = RapidResponseRun.objects.filter(
-                    problem_usage_key=problem_id,
-                    course_key=course_key,
-                    open=True
-                ).first()
-                if not open_run:
-                    # Problem is not open
-                    return
-
-                # Delete any older responses for the user
-                with transaction.atomic():
-                    RapidResponseSubmission.objects.filter(
-                        user_id=user_id,
-                        run=open_run,
-                    ).delete()
-
-                    RapidResponseSubmission.objects.create(
-                        user_id=user_id,
-                        run=open_run,
-                        event=event,
-                        answer_id=answer_id,
-                        answer_text=answer_text,
-                    )
-            except:  # pylint: disable=bare-except
-                log.exception("Unable to parse data for event: %s", event)
+        # Delete any older responses for the user
+        with transaction.atomic():
+            RapidResponseSubmission.objects.filter(
+                user_id=sub.user_id,
+                run=open_run,
+            ).delete()
+            RapidResponseSubmission.objects.create(
+                user_id=sub.user_id,
+                run=open_run,
+                event=sub.raw_data,
+                answer_id=sub.answer_id,
+                answer_text=sub.answer_text,
+            )
