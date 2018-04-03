@@ -126,7 +126,7 @@ class RapidResponseAside(XBlockAside):
             run = RapidResponseRun.objects.filter(
                 problem_usage_key=self.wrapped_block_usage_key,
                 course_key=self.course_key,
-            ).order_by('-created').first()
+            ).first()
 
             if run and run.open:
                 run.open = False

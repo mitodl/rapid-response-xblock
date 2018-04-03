@@ -7,7 +7,7 @@
     font-size: 14px;
 }
 
-button.problem-status-toggle {
+.problem-status-toggle {
     border-radius: 5px;
     border: 2px solid #1176b2;
     color: #1176b2;
@@ -15,14 +15,16 @@ button.problem-status-toggle {
     font-weight: 600;
     padding: 0.625rem 1rem !important;
     margin-right: 30px;
+    cursor: pointer;
 }
 
-button.problem-status-toggle:hover {
-    background: #065683 none;
-    box-shadow: none;
+.rapid-response-title {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
 }
 
-.rapid-response-content {
+.rapid-response-controls {
     height: 70px;
 }
 
@@ -56,10 +58,6 @@ text.message {
     padding: 0 0 20px 0;
 }
 
-.selection-container {
-    font-size: 14pt;
-}
-
 .buttons-row {
     display: flex;
     flex-direction: row;
@@ -74,6 +72,10 @@ text.message {
     margin-right: 30px;
 }
 
+.timer.on {
+    color: black;
+}
+
 .timer-spinner {
     color: #1aafdd;
     font-size: 35pt;
@@ -82,6 +84,10 @@ text.message {
 .timer-spinner-text {
     color: #1aafdd;
     margin-left: 20px;
+}
+
+.selection-container {
+    font-size: 14pt;
 }
 
 .selection-container a {
@@ -109,4 +115,8 @@ text.message {
 
 .xblock {
     max-width: inherit !important;
+}
+
+.num-students {
+    font-size: 14pt;
 }
