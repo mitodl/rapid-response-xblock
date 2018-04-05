@@ -133,6 +133,36 @@
     }
 
     /**
+     * Click handler to close this chart
+     * @param {number} chartIndex The index of the chart
+     */
+    function closeChart(chartIndex) {
+      state.selectedRuns.splice(chartIndex, 1);
+      render();
+    }
+
+    /**
+     * Select handler to choose a different run for the chart
+     * @param {number} chartIndex The index of the chart
+     */
+    function changeSelectedChart(chartIndex) {
+      var selectedRun = this.value;
+      if (selectedRun !== NONE_SELECTION) {
+        selectedRun = parseInt(selectedRun);
+      }
+      state.selectedRuns[chartIndex] = selectedRun;
+      render();
+    }
+
+    /**
+     * Click handler to open a new chart for comparison
+     */
+    function openNewChart() {
+      state.selectedRuns = [state.selectedRuns[0], NONE_SELECTION];
+      render();
+    }
+
+    /**
      * Renders the graph and adjusts axes based on responses to the given problem.
      */
     function renderD3() {
@@ -153,27 +183,20 @@
         .append("div")
         .classed("selection-container", true);
 
-      var select = selectionContainersEnter.append("select")
-        .on('change', function(index) {
-          var selectedRun = select.property('value');
-          if (selectedRun !== NONE_SELECTION) {
-            selectedRun = parseInt(selectedRun);
-          }
-          state.selectedRuns[index] = selectedRun;
-          render();
-        });
+      selectionContainersEnter.append("select")
+        .on('change', changeSelectedChart);
 
       selectionContainersEnter.append("a")
-        .classed("compare-responses", true).text("Compare responses").on("click", function() {
-          state.selectedRuns = [state.selectedRuns[0], NONE_SELECTION];
-          render();
-        });
+        .classed("compare-responses", true)
+        .text("Compare responses")
+        .on("click", openNewChart);
 
       selectionContainersEnter.append("a")
-        .classed("close", true).text("Close ").on('click', function(index) {
-          state.selectedRuns.splice(index, 1);
-          render();
-        }).append("span").attr("class", "fa fa-close");
+        .classed("close", true)
+        .text("Close ")  // trailing space is intentional, CSS will add a 'X' right after
+        .on('click', closeChart)
+        .append("span")
+        .attr("class", "fa fa-close");
 
       var selectionRowsMerged = selectionContainersEnter.merge(selectionContainers);
       selectionRowsMerged.selectAll(".compare-responses").classed("hidden", function() {
