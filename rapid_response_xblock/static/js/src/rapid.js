@@ -52,8 +52,7 @@
       $rapidBlockContent.find(problemStatusBtnSel).click(function() {
         $.post(toggleStatusUrl).then(
           function(newState) {
-            // if the button to toggle this is visible there should only be one chart, so
-            // selectedRuns just replaces the existing one
+            // Selected runs should be reset when the open status is changed
             state = _.assign({}, state, newState, {
               selectedRuns: [null]
             });
