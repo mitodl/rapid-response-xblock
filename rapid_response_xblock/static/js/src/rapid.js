@@ -176,7 +176,7 @@
 
       var selectionRowsMerged = selectionRowsEnter.merge(selectionRows);
       selectionRowsMerged.selectAll(".compare-responses").classed("hidden", function() {
-        return chartKeys.length !== 1 || state.is_open;
+        return chartKeys.length !== 1 || state.is_open || state.runs.length < 2;
       });
       selectionRowsMerged.selectAll(".close").classed("hidden", function() {
         return chartKeys.length === 1;
@@ -220,7 +220,8 @@
       var selectedRun = state.selectedRuns[chartIndex];
 
       // select the proper option and use it to filter the runs
-      var select = container.select(".selection-row").select("select");
+      var select = container.select(".selection-row").select("select")
+        .classed("hidden", state.runs.length === 0);
       if (selectedRun === null && runs.length > 0) {
         // The newest run should be the most recent one according to the info received from the server.
         selectedRun = runs[0].id;
