@@ -52,7 +52,7 @@ text.message {
     display: flex;
 }
 
-.selection-row a {
+.selection-container a {
     padding: 0 10px;
     cursor: pointer;
 }
@@ -61,7 +61,7 @@ text.message {
     color: black;
 }
 
-.selection-row {
+.selection-container {
     font-size: 16pt;
 }
 

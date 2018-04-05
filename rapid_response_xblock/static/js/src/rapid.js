@@ -148,12 +148,12 @@
         .append("div");
 
       // chart selection, close and compare buttons
-      var selectionRows = containers.selectAll(".selection-row");
-      var selectionRowsEnter = containersEnter
+      var selectionContainers = containers.selectAll(".selection-container");
+      var selectionContainersEnter = containersEnter
         .append("div")
-        .classed("selection-row", true);
+        .classed("selection-container", true);
 
-      var select = selectionRowsEnter.append("select")
+      var select = selectionContainersEnter.append("select")
         .on('change', function(index) {
           var selectedRun = select.property('value');
           if (selectedRun !== NONE_SELECTION) {
@@ -163,19 +163,19 @@
           render();
         });
 
-      selectionRowsEnter.append("a")
+      selectionContainersEnter.append("a")
         .classed("compare-responses", true).text("Compare responses").on("click", function() {
           state.selectedRuns = [state.selectedRuns[0], NONE_SELECTION];
           render();
         });
 
-      selectionRowsEnter.append("a")
+      selectionContainersEnter.append("a")
         .classed("close", true).text("Close ").on('click', function(index) {
           state.selectedRuns.splice(index, 1);
           render();
         }).append("span").attr("class", "fa fa-close");
 
-      var selectionRowsMerged = selectionRowsEnter.merge(selectionRows);
+      var selectionRowsMerged = selectionContainersEnter.merge(selectionContainers);
       selectionRowsMerged.selectAll(".compare-responses").classed("hidden", function() {
         return chartKeys.length !== 1 || state.is_open || state.runs.length < 2;
       });
@@ -221,7 +221,7 @@
       var selectedRun = state.selectedRuns[chartIndex];
 
       // select the proper option and use it to filter the runs
-      var select = container.select(".selection-row").select("select")
+      var select = container.select(".selection-container").select("select")
         .classed("hidden", state.runs.length === 0 || state.is_open);
       if (selectedRun === null && runs.length > 0) {
         // The newest run should be the most recent one according to the info received from the server.
