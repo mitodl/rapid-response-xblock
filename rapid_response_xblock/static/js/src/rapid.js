@@ -174,31 +174,31 @@
         .select(rapidBlockResultsSel)
         .selectAll(".chart-container")
         .data(chartKeys);
-      var containersEnter = containers.enter()
+      var newContainers = containers.enter()
         .append("div");
 
       // chart selection, close and compare buttons
       var selectionContainers = containers.selectAll(".selection-container");
-      var selectionContainersEnter = containersEnter
+      var newSelectionContainers = newContainers
         .append("div")
         .classed("selection-container", true);
 
-      selectionContainersEnter.append("select")
+      newSelectionContainers.append("select")
         .on('change', changeSelectedChart);
 
-      selectionContainersEnter.append("a")
+      newSelectionContainers.append("a")
         .classed("compare-responses", true)
         .text("Compare responses")
         .on("click", openNewChart);
 
-      selectionContainersEnter.append("a")
+      newSelectionContainers.append("a")
         .classed("close", true)
         .text("Close ")  // trailing space is intentional, CSS will add a 'X' right after
         .on('click', closeChart)
         .append("span")
         .attr("class", "fa fa-close");
 
-      var selectionRowsMerged = selectionContainersEnter.merge(selectionContainers);
+      var selectionRowsMerged = newSelectionContainers.merge(selectionContainers);
       selectionRowsMerged.selectAll(".compare-responses").classed("hidden", function() {
         return chartKeys.length !== 1 || state.is_open || state.runs.length < 2;
       });
@@ -207,15 +207,15 @@
       });
 
       // create the chart svg container
-      var chartsEnter = containersEnter
+      var newCharts = newContainers
         .append("svg")
         // The g element has a little bit of padding so the x and y axes can surround it
         .append("g").attr("class", "chart");
       // create x and y axes
-      chartsEnter.append("g").attr("class", "xaxis").attr("transform", "translate(0," + ChartSettings.height + ")");
-      chartsEnter.append("g").attr("class", "yaxis");
+      newCharts.append("g").attr("class", "xaxis").attr("transform", "translate(0," + ChartSettings.height + ")");
+      newCharts.append("g").attr("class", "yaxis");
 
-      containersEnter.merge(containers)
+      newContainers.merge(containers)
         .attr("class", "chart-container " + (chartKeys.length === 1 ? 'single-chart' : 'two-charts'))
         .each(function (index, __, charts) {
           renderChart(d3.select(charts[index]), index);
