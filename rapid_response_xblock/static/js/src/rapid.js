@@ -221,7 +221,7 @@
 
       // select the proper option and use it to filter the runs
       var select = container.select(".selection-row").select("select")
-        .classed("hidden", state.runs.length === 0);
+        .classed("hidden", state.runs.length === 0 || state.is_open);
       if (selectedRun === null && runs.length > 0) {
         // The newest run should be the most recent one according to the info received from the server.
         selectedRun = runs[0].id;
