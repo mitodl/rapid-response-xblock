@@ -140,9 +140,10 @@
       var chartKeys = _.keys(state.selectedRuns);
 
       // D3 data join for charts. Create a container div for each chart to store graph, select element and buttons.
-      var containers = d3.select(element).select(
-        rapidBlockResultsSel
-      ).selectAll(".chart-container").data(chartKeys);
+      var containers = d3.select(element)
+        .select(rapidBlockResultsSel)
+        .selectAll(".chart-container")
+        .data(chartKeys);
       var containersEnter = containers.enter()
         .append("div");
 
@@ -332,7 +333,6 @@
           var answerText = response ? response.answer_text : "";
           wrapText(d3.select(nodes[i]), x.bandwidth(), answerText);
         });
-
 
       // Update the Y axis.
       // By default it assumes a continuous scale, but we just want to show integers so we need to create the ticks
