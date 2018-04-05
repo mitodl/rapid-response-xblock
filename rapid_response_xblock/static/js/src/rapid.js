@@ -47,7 +47,7 @@
     function render() {
       var $rapidBlockContent = $element.find(rapidBlockContentSel);
       $rapidBlockContent.html(toggleTemplate(state));
-      renderD3();
+      renderChartContainer();
 
       $rapidBlockContent.find(problemStatusBtnSel).click(function() {
         $.post(toggleStatusUrl).then(
@@ -162,9 +162,9 @@
     }
 
     /**
-     * Renders the graph and adjusts axes based on responses to the given problem.
+     * Renders the container elements for the charts using D3
      */
-    function renderD3() {
+    function renderChartContainer() {
       // Get the indexes for selected runs. This should either be [0] or [0, 1].
       var chartKeys = _.keys(state.selectedRuns);
 
