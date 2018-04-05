@@ -255,8 +255,27 @@
       chart.select(".yaxis")
         .transition() // transition to match the bar update
         .call(
-          d3.axisLeft(y).tickValues(yTickValues).tickFormat(d3.format("d"))
-        );
+          d3.axisLeft(y)
+            .tickValues(yTickValues)
+            .tickFormat(d3.format("d"))
+            // make the tick stretch to cover the entire chart
+            .tickSize(-ChartSettings.width)
+        )
+        .selectAll(".tick")
+        // render the tick line as a dashed line
+        .attr("stroke-dasharray", "8,8");
+
+      // strangely, the default path has a line at the side and one at the top
+      // we just want the one on the side
+      chart.select(".yaxis .domain").remove();
+      chart.select(".yaxis .line").remove();
+      // Render a vertical line at x=0
+      chart.select(".yaxis")
+        .append("line")
+        .classed("line", true)
+        .attr("stroke", "#000")
+        .attr("x2", 0.5)
+        .attr("y2", ChartSettings.height);
     }
 
     /**
