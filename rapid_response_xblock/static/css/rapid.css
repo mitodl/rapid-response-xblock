@@ -1,3 +1,8 @@
+.rapid-response-block {
+    background-color: #f7f7f7;
+    padding: 25px;
+}
+
 .xblock-editor .rapid-response-block {
     padding: 20px;
 }
@@ -6,9 +11,16 @@
     font-size: 14px;
 }
 
+button.problem-status-toggle {
+    border-radius: 5px;
+    border: 2px solid #1176b2;
+    color: #1176b2;
+    background: transparent;
+    font-weight: 700;
+}
+
 button.problem-status-toggle:hover {
-    background-color: #065683;
-    background-image: none;
+    background: #065683 none;
     box-shadow: none;
 }
 
@@ -16,8 +28,16 @@ button.problem-status-toggle:hover {
     border: 1px solid black;
 }
 
-.tick text {
+.single-chart .tick text {
     font-size: 30pt;
+}
+
+.two-charts .tick text {
+    font-size: 20pt;
+}
+
+.two-charts svg {
+    background-color: #ebebeb;
 }
 
 text.message {
@@ -26,4 +46,25 @@ text.message {
 
 .hidden {
     display: none;
+}
+
+.rapid-response-results {
+    display: flex;
+}
+
+.selection-container a {
+    padding: 0 10px;
+    cursor: pointer;
+}
+
+.chart-title {
+    color: black;
+}
+
+.selection-container {
+    font-size: 16pt;
+}
+
+.wrap-instructor-info {
+    visibility: hidden;
 }
