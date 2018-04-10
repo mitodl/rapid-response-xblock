@@ -343,10 +343,7 @@
         .attr("value", function(run) { return run.id; })
         .text(function(run) {
           if (run.id === NONE_SELECTION) {
-            if (chartIndex > 0) {
-              return 'Select';
-            }
-            return 'None';
+            return (chartIndex > 0) ? 'Select' : 'None';
           }
           return moment(run.created).format("MMMM D, YYYY, h:mm:ss a");
         });
