@@ -71,7 +71,7 @@
       top: 50, // space for text for upper label on y axis
       left: 50, // space for y axis
       right: 50, // space for text to flow
-      bottom: 200, // space for x axis
+      bottom: 100, // space for x axis
       outerBufferWidth: 200, // pixels on the right and left
       outerTop: 100, // space between chart and top of container, should contain enough space for buttons
       innerBufferWidth: 0, // space between two charts
