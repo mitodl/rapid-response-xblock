@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from ddt import data, ddt, unpack
 from mock import Mock, patch, PropertyMock
 
+from dateutil.parser import parse as parse_datetime
 import pytz
 from opaque_keys.edx.keys import UsageKey
 from student.tests.factories import UserFactory
@@ -214,7 +215,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
 
         now = datetime.now(tz=pytz.utc)
         minute = timedelta(minutes=1)
-        assert (now - minute) < resp.json['server_now'] < (now + minute)
+        assert (now - minute) < parse_datetime(resp.json['server_now']) < (now + minute)
 
         get_choices_mock.assert_called_once_with()
         get_counts_mock.assert_called_once_with([run.id for run in run_queryset], choices)
