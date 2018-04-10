@@ -151,7 +151,7 @@
         // yay trig
         // this value is the maximum length for the text when laid out at an angle
         // hypotenuse is divided in half since text is starting in center
-        var hypotenuse = (barWidth / Math.cos(radians)) / 2;
+        var maxTextWidth = (barWidth / Math.cos(radians)) / 2;
         var rootContainer = root.append("g").attr("transform", "rotate(" + angle + ", 0, 10)");
         rootText = rootContainer.append("text")
           .attr("fill", "#000")
@@ -172,7 +172,7 @@
 
           var tspanText = tspan.text();
           tspan.text(tspanText + " " + word);
-          if (tspan.node().getComputedTextLength() > hypotenuse) {
+          if (tspan.node().getComputedTextLength() > maxTextWidth) {
             // The new word would go beyond the bar width boundary,
             // so change tspan back to its old text and create one with the
             // new word on a new line.
