@@ -170,33 +170,33 @@
             return;
           }
 
-          var tspanText = tspan.text();
-          tspan.text(tspanText + " " + word);
+          var compiledText = tspan.text();
+          tspan.text(compiledText + " " + word);
           if (tspan.node().getComputedTextLength() > maxTextWidth) {
             // The new word would go beyond the bar width boundary,
             // so change tspan back to its old text and create one with the
             // new word on a new line.
 
             // If there is only one long word we don't have a choice but to render it
-            if (tspanText.length === 0) {
+            if (compiledText.length === 0) {
               return;
             }
 
             if (currentLine === 1) {
               // there is a maximum of two lines until we add the ellipses
-              tspan.text(tspanText + "...");
+              tspan.text(compiledText + "...");
               currentLine++;
               return;
             }
 
             if (currentLine > 1) {
               // maximum of two lines
-              tspan.text(tspanText);
+              tspan.text(compiledText);
               return;
             }
 
             currentLine++;
-            tspan.text(tspanText + " ");
+            tspan.text(compiledText + " ");
             tspan = rootText.append("tspan").attr("x", 0).attr("y", rootY).attr(
               "dy", ((currentLine * lineHeight) + rootDy) + "em"
             ).text(word);
