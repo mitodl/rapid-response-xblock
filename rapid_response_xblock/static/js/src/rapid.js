@@ -455,10 +455,8 @@
         .selectAll(".tick")
         // render the tick line as a dashed line
         .attr("stroke-dasharray", function(value) {
-          if (value === 0) {
-            return null;
-          }
-          return "8,8";
+          // At 0 the line should be solid to blend in with the chart border
+          return value === 0 ? null : "8,8";
         })
         .selectAll("line")
         .attr("stroke", "rgba(0,0,0,.3)");
