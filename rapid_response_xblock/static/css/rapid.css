@@ -14,6 +14,7 @@ button.problem-status-toggle {
     background: transparent;
     font-weight: 600;
     padding: 0.625rem 1rem !important;
+    margin-right: 30px;
 }
 
 button.problem-status-toggle:hover {
@@ -57,6 +58,30 @@ text.message {
 
 .selection-container {
     font-size: 14pt;
+}
+
+.buttons-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.timer {
+    font-size: 15pt;
+    color: #7a7a7a;
+    background-color: #f0f0f0;
+    padding: 10px;
+    margin-right: 30px;
+}
+
+.timer-spinner {
+    color: #1aafdd;
+    font-size: 35pt;
+}
+
+.timer-spinner-text {
+    color: #1aafdd;
+    margin-left: 20px;
 }
 
 .selection-container a {
