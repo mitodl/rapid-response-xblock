@@ -31,7 +31,10 @@
     var rapidBlockContentSel = '.rapid-response-content';
     var rapidBlockResultsSel = '.rapid-response-results';
     var problemStatusBtnSel = '.problem-status-toggle';
-    var toggleTemplate = _.template($(element).find("#rapid-response-toggle-tmpl").text());
+    var buttonsRowSel = '.buttons-row';
+    var timerSel = '.timer';
+    var timerSpinnerSel = '.timer-spinner';
+    var timerSpinnerTextSel = '.timer-spinner-text';
 
     // default values
     var state = {
@@ -48,56 +51,8 @@
      * Render template
      */
     function render() {
-      var $rapidBlockContent = $element.find(rapidBlockContentSel);
-      var pollSeconds = 0, pollMinutes = 0;
-      if (state.is_open) {
-        var openRun = _.findWhere(state.runs, {open: true});
-
-        var totalSeconds = 0;
-        // It should almost always be true that if state.is_open is true that openRun exists
-        // But there is a small delay between when state.is_open is set and when the runs
-        // are refreshed from the server
-        if (openRun) {
-
-          // millis is the time between current time and the time of last fetch (according to browser), plus
-          // the time between the last fetch and the run creation (according to server)
-          var millis = moment().diff(state.lastPoll) + moment(state.server_now).diff(moment(openRun.created));
-          totalSeconds = Math.floor(millis / 1000);
-        }
-
-        pollSeconds = totalSeconds % 60;
-        pollMinutes = Math.floor(totalSeconds / 60);
-      }
-      var templateState = _.assign({}, state, {
-        pollSeconds: pollSeconds,
-        pollMinutes: pollMinutes
-      });
-      $rapidBlockContent.html(toggleTemplate(templateState));
+      renderButtons();
       renderChartContainer();
-
-      $rapidBlockContent.find(problemStatusBtnSel).click(function() {
-        // disable the button temporarily to prevent double clicks
-        $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", true);
-        $.post(toggleStatusUrl).then(
-          function(newState) {
-            // Selected runs should be reset when the open status is changed
-            $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", false);
-
-            // if the button to toggle this is visible there should only be one chart, so
-            // selectedRuns just replaces the existing one
-            state = _.assign({}, state, newState, {
-              selectedRuns: [null]
-            });
-
-            if (state.is_open) {
-              pollForResponses();
-              updateTimer();
-            }
-
-            render();
-          }
-        );
-      });
     }
 
     // TODO: These values are guesses, maybe we want to calculate based on browser width/height? Not sure
@@ -505,6 +460,48 @@
     }
 
     /**
+     * Render buttons and select element above the chart
+     */
+    function renderButtons() {
+      var $buttonsRow = $element.find(buttonsRowSel);
+      var $problemButton = $element.find(problemStatusBtnSel);
+      var $timer = $element.find(timerSel);
+      var $timerSpinner = $element.find(timerSpinnerSel);
+      var $timerSpinnerText = $element.find(timerSpinnerTextSel);
+
+      if (state.selectedRuns.length !== 1) {
+        // Don't show these buttons for the the compare view
+        $buttonsRow.toggleClass('hidden', true);
+        return;
+      }
+
+      $buttonsRow.toggleClass('hidden', false);
+      $problemButton.text((state.is_open ? "Close" : "Open") + " Problem Now");
+
+      var pollSeconds = 0, pollMinutes = 0;
+      if (state.is_open) {
+        var openRun = _.findWhere(state.runs, {open: true});
+
+        // It should almost always be true that if state.is_open is true that openRun exists
+        // But there is a small delay between when state.is_open is set and when the runs
+        // are refreshed from the server
+        var totalSeconds = 0;
+        if (openRun) {
+          // millis is the time between current time and the time of last fetch (according to browser), plus
+          // the time between the last fetch and the run creation (according to server)
+          var millis = moment().diff(state.lastPoll) + moment(state.server_now).diff(moment(openRun.created));
+          totalSeconds = Math.floor(millis / 1000);
+        }
+
+        pollSeconds = totalSeconds % 60;
+        pollMinutes = Math.floor(totalSeconds / 60);
+      }
+      $timer.text(pollMinutes + "m : " + pollSeconds + "s");
+      $timerSpinner.toggleClass('hidden', !state.is_open);
+      $timerSpinnerText.toggleClass('hidden', !state.is_open);
+    }
+
+    /**
      * Update the timer every second
      */
     function updateTimer() {
@@ -542,6 +539,32 @@
     $(function($) { // onLoad
       var block = $element.find(rapidTopLevelSel);
       state.is_open = block.attr('data-open') === 'True';
+
+      var $rapidBlockContent = $element.find(rapidBlockContentSel);
+      $rapidBlockContent.find(problemStatusBtnSel).click(function() {
+        // disable the button temporarily to prevent double clicks
+        $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", true);
+        $.post(toggleStatusUrl).then(
+          function(newState) {
+            // Selected runs should be reset when the open status is changed
+            $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", false);
+
+            // if the button to toggle this is visible there should only be one chart, so
+            // selectedRuns just replaces the existing one
+            state = _.assign({}, state, newState, {
+              selectedRuns: [null]
+            });
+
+            if (state.is_open) {
+              pollForResponses();
+              updateTimer();
+            }
+
+            render();
+          }
+        );
+      });
+
       render();
 
       // adjust graph for each rerender
