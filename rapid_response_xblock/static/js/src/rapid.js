@@ -164,6 +164,8 @@
 
         var currentLine = 0;
         var lineHeight = 1.1;
+        // Build the text word by word so that it breaks lines appropriately
+        // and cuts off with an ellipsis if it gets too long
         words.forEach(function(word) {
           if (!word) {
             // May happen if the input text is empty.
@@ -173,11 +175,9 @@
           var compiledText = tspan.text();
           tspan.text(compiledText + " " + word);
           if (tspan.node().getComputedTextLength() > maxTextWidth) {
-            // The new word would go beyond the bar width boundary,
-            // so change tspan back to its old text and create one with the
-            // new word on a new line.
+            // Check if the new word would go beyond the bar width boundary.
 
-            // If there is only one long word we don't have a choice but to render it
+            // If this is the first word on the line we don't have a choice but to render it
             if (compiledText.length === 0) {
               return;
             }
@@ -195,6 +195,8 @@
               return;
             }
 
+            // Change tspan back to its old text and create a one with the
+            // word on a new line.
             currentLine++;
             tspan.text(compiledText + " ");
             tspan = rootText.append("tspan").attr("x", 0).attr("y", rootY).attr(
@@ -420,7 +422,8 @@
         .transition()
         .call(
           d3.axisBottom(x).tickFormat(function() {
-            // to handle rotation this must be done manually
+            // Return null to output no text by default
+            // The wrapText(...) call below will add text manually to let us adjust the angle and fit boundaries
             return null;
           })
         )
