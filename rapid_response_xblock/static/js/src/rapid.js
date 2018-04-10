@@ -51,9 +51,7 @@
       var $rapidBlockContent = $element.find(rapidBlockContentSel);
       var pollSeconds = 0, pollMinutes = 0;
       if (state.is_open) {
-        var openRun = state.runs.find(function(run) {
-          return run.open;
-        });
+        var openRun = _.findWhere(state.runs, {open: true});
 
         var totalSeconds = 0;
         // It should almost always be true that if state.is_open is true that openRun exists
