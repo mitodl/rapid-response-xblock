@@ -56,10 +56,13 @@
         });
 
         var totalSeconds = 0;
+        // It should almost always be true that if state.is_open is true that openRun exists
+        // But there is a small delay between when state.is_open is set and when the runs
+        // are refreshed from the server
         if (openRun) {
-          // It should almost always be true that if state.is_open is true that openRun exists
-          // But there is a small delay between when state.is_open is set and when the runs
-          // are refreshed from the server
+
+          // millis is the time between current time and the time of last fetch (according to browser), plus
+          // the time between the last fetch and the run creation (according to server)
           var millis = moment().diff(state.lastPoll) + moment(state.server_now).diff(moment(openRun.created));
           totalSeconds = Math.floor(millis / 1000);
         }
