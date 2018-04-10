@@ -460,6 +460,24 @@
     }
 
     /**
+     * millis is the time between current time and the time of last fetch (according to browser), plus
+     * the time between the last fetch and the run creation (according to server)
+     * @returns {number}
+     */
+    function getSecondsSinceRunOpened() {
+      var openRun = _.findWhere(state.runs, {open: true});
+
+      // It should almost always be true that if state.is_open is true that openRun exists
+      // But there is a small delay between when state.is_open is set and when the runs
+      // are refreshed from the server
+      if (openRun) {
+        var millis = moment().diff(state.lastPoll) + moment(state.server_now).diff(moment(openRun.created));
+        return Math.floor(millis / 1000);
+      }
+      return 0;
+    }
+
+    /**
      * Render buttons and select element above the chart
      */
     function renderButtons() {
@@ -478,21 +496,9 @@
       $buttonsRow.toggleClass('hidden', false);
       $problemButton.text((state.is_open ? "Close" : "Open") + " Problem Now");
 
+      var totalSeconds = getSecondsSinceRunOpened();
       var pollSeconds = 0, pollMinutes = 0;
       if (state.is_open) {
-        var openRun = _.findWhere(state.runs, {open: true});
-
-        // It should almost always be true that if state.is_open is true that openRun exists
-        // But there is a small delay between when state.is_open is set and when the runs
-        // are refreshed from the server
-        var totalSeconds = 0;
-        if (openRun) {
-          // millis is the time between current time and the time of last fetch (according to browser), plus
-          // the time between the last fetch and the run creation (according to server)
-          var millis = moment().diff(state.lastPoll) + moment(state.server_now).diff(moment(openRun.created));
-          totalSeconds = Math.floor(millis / 1000);
-        }
-
         pollSeconds = totalSeconds % 60;
         pollMinutes = Math.floor(totalSeconds / 60);
       }
