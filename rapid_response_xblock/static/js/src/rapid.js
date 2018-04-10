@@ -3,6 +3,8 @@
 
   // time between polls of responses API
   var POLLING_MILLIS = 3000;
+  // time between timer rendering updates
+  var TIMER_MILLIS = 1000;
   // color palette for bars
   var PALETTE = [
     '#1e73ae',
@@ -34,13 +36,12 @@
     // default values
     var state = {
       is_open: false,
-      timerOn: false,
       runs: [],
       choices: [],
       counts: {},
       selectedRuns: [null],  // one per chart. null means select the latest one
-      lastPoll: null,
-      isPolling: false
+      isPolling: false,  // is there a request in progress? Used to disable button to prevent double clicks
+      lastPoll: null  // a moment object representing the time at last poll, to be used to diff with the run
     };
 
     /**
@@ -49,10 +50,20 @@
     function render() {
       var $rapidBlockContent = $element.find(rapidBlockContentSel);
       var pollSeconds = 0, pollMinutes = 0;
-      if (state.runs.length > 0 && state.timerOn && state.is_open) {
-        var lastPoll = moment(state.runs[0].created);
-        var now = moment();
-        var totalSeconds = Math.floor(now.diff(lastPoll) / 1000);
+      if (state.is_open) {
+        var openRun = state.runs.find(function(run) {
+          return run.open;
+        });
+
+        var totalSeconds = 0;
+        if (openRun) {
+          // It should almost always be true that if state.is_open is true that openRun exists
+          // But there is a small delay between when state.is_open is set and when the runs
+          // are refreshed from the server
+          var millis = moment().diff(state.lastPoll) + moment(state.server_now).diff(moment(openRun.created));
+          totalSeconds = Math.floor(millis / 1000);
+        }
+
         pollSeconds = totalSeconds % 60;
         pollMinutes = Math.floor(totalSeconds / 60);
       }
@@ -74,14 +85,12 @@
             // if the button to toggle this is visible there should only be one chart, so
             // selectedRuns just replaces the existing one
             state = _.assign({}, state, newState, {
-              selectedRuns: [null],
-              lastPoll: null
+              selectedRuns: [null]
             });
 
             if (state.is_open) {
               pollForResponses();
-            } else {
-              state.timerOn = false;
+              updateTimer();
             }
 
             render();
@@ -495,23 +504,27 @@
     }
 
     /**
+     * Update the timer every second
+     */
+    function updateTimer() {
+      if (state.is_open) {
+        setTimeout(updateTimer, TIMER_MILLIS);
+      }
+      render();
+    }
+
+    /**
      * Read from the responses API and put the new value in the rendering state.
      * If the problem is open, schedule another poll using this function.
      */
     function pollForResponses() {
       if (state.is_open) {
-        setTimeout(pollForResponses, 1000);
+        setTimeout(pollForResponses, POLLING_MILLIS);
       }
 
       // make sure this updates at least once a second
-      render();
       if (state.isPolling) {
-        // API call is already in progress
-        return;
-      }
-
-      if (state.lastPoll !== null && moment().diff(moment(state.lastPoll)) < POLLING_MILLIS) {
-        // too soon, check again next poll
+        // API call is still in progress
         return;
       }
 
@@ -519,8 +532,7 @@
       $.get(responsesUrl).then(function(newState) {
         state = _.assign({}, state, newState, {
           isPolling: false,
-          lastPoll: moment().format(),
-          timerOn: state.is_open
+          lastPoll: moment()
         });
         render();
       });
@@ -537,6 +549,7 @@
       });
 
       pollForResponses();
+      updateTimer();
     });
   }
 

@@ -1,13 +1,14 @@
 """Rapid-response functionality"""
+from datetime import datetime
 import logging
 from functools import wraps
-from collections import namedtuple
 import pkg_resources
 
 from django.db import transaction
 from django.db.models import Count
 from django.template import Context, Template
 from django.utils.translation import ugettext_lazy as _
+import pytz
 from web_fragments.fragment import Fragment
 from webob.response import Response
 from xblock.core import XBlock, XBlockAside
@@ -168,6 +169,7 @@ class RapidResponseAside(XBlockAside):
             'runs': runs,
             'choices': choices,
             'counts': counts,
+            'server_now': datetime.now(tz=pytz.utc).isoformat(),
         })
 
     @classmethod
