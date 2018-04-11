@@ -43,8 +43,8 @@
       choices: [],
       counts: {},
       selectedRuns: [null],  // one per chart. null means select the latest one
-      isPolling: false,  // is there a request in progress? Used to disable button to prevent double clicks
-      lastPoll: null  // a moment object representing the time at last poll, to be used to diff with the run
+      isFetchingResponses: false,  // is there a request in progress? Used to disable button to prevent double clicks
+      lastFetch: null  // a moment object representing the time at last poll, to be used to diff with the run
     };
 
     /**
@@ -471,7 +471,7 @@
       // But there is a small delay between when state.is_open is set and when the runs
       // are refreshed from the server
       if (openRun) {
-        var millis = moment().diff(state.lastPoll) + moment(state.server_now).diff(moment(openRun.created));
+        var millis = moment().diff(state.lastFetch) + moment(state.server_now).diff(moment(openRun.created));
         return Math.floor(millis / 1000);
       }
       return 0;
@@ -518,25 +518,30 @@
     }
 
     /**
-     * Read from the responses API and put the new value in the rendering state.
-     * If the problem is open, schedule another poll using this function.
+     * Poll responses API. If the problem is open, schedule another poll using this function.
      */
     function pollForResponses() {
       if (state.is_open) {
         setTimeout(pollForResponses, POLLING_MILLIS);
       }
+      fetchResponsesAndRender();
+    }
 
+    /**
+     * Read from the responses API and put the new value in the rendering state.
+     */
+    function fetchResponsesAndRender() {
       // make sure this updates at least once a second
-      if (state.isPolling) {
+      if (state.isFetchingResponses) {
         // API call is still in progress
         return;
       }
 
-      state.isPolling = true;
+      state.isFetchingResponses = true;
       $.get(responsesUrl).then(function(newState) {
         state = _.assign({}, state, newState, {
-          isPolling: false,
-          lastPoll: moment()
+          isFetchingResponses: false,
+          lastFetch: moment()
         });
         render();
       });
@@ -559,25 +564,27 @@
               selectedRuns: [null]
             });
 
+            renderControls();
             if (state.is_open) {
               pollForResponses();
               updateTimer();
             }
-
-            render();
           }
         );
       });
 
-      render();
+      renderControls();
+      fetchResponsesAndRender();
 
       // adjust graph for each rerender
       window.addEventListener('resize', function() {
         render();
       });
 
-      pollForResponses();
-      updateTimer();
+      if (state.is_open) {
+        pollForResponses();
+        updateTimer();
+      }
     });
   }
 
