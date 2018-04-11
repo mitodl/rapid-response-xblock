@@ -36,6 +36,7 @@
     var timerSpinnerSel = '.timer-spinner';
     var timerSpinnerTextSel = '.timer-spinner-text';
     var numStudentsSel = '.num-students';
+    var tooltipSel = '.rapid-response-tooltip';
 
     // default values
     var state = {
@@ -345,6 +346,8 @@
      * @param {number} chartIndex The index of the chart (either 0 or 1)
      */
     function renderChart(container, chartIndex) {
+      var $tooltip = $(tooltipSel);
+
       var runs = state.runs;
       var choices = state.choices;
       var counts = state.counts;
@@ -361,6 +364,19 @@
       // select the proper option and use it to filter the runs
       var select = container.select(".selection-container").select("select")
         .classed("hidden", state.runs.length === 0 || state.is_open);
+
+      // We can't access these variables from within the tooltip mouse handlers
+      // because the handler is only set on bar creation, not bar update, so the closure will be out of date.
+      // Instead the count will be added to the histogram as an extra property so it's available as an argument.
+      var totalResponseCount = _.reduce(histogram, function(total, item) {
+        return total + item.count
+      }, 0);
+      histogram = histogram.map(function(item) {
+        return _.assign({}, item, {
+          totalResponseCount: totalResponseCount
+        });
+      });
+
       // D3 data join on runs to create a select list
       var optionData = [{ id: NONE_SELECTION }].concat(runs);
       var options = select.selectAll("option").data(optionData, function(run) {
@@ -425,23 +441,40 @@
         .append("rect").attr("class", "bar")
         // Set the height and y values according to the scale. This prevents weird transition behavior
         // where new bars appear to zap in out of nowhere.
-        .attr("x", function(response) { return x(response.answer_id); })
+        .attr("x", function(item) { return x(item.answer_id); })
         .attr("width", x.bandwidth())
-        .attr("y", function(response) { return y(response.count); })
-        .attr("height", function(response) {
-          return innerHeight - y(response.count);
+        .attr("y", function(item) { return y(item.count); })
+        .attr("height", function(item) {
+          return innerHeight - y(item.count);
+        })
+        .on("mousemove", function(item) {
+          $tooltip.toggleClass('hidden', false)
+            .css("left", (d3.event.pageX + 20) + "px")
+            .css("top", d3.event.pageY + "px");
+          $tooltip.find(".tooltip-title").text(item.answer_text);
+          $tooltip.find(".tooltip-total").text(item.count);
+
+          var percent = '';
+          if (item.totalResponseCount > 0) {
+            // If there are no responses there should be no visible bars, but just in case
+            percent = Math.round((item.count / item.totalResponseCount) * 100) + "%";
+          }
+          $tooltip.find(".tooltip-percent").text(percent);
+        })
+        .on("mouseout", function() {
+          $tooltip.toggleClass('hidden', true);
         })
         .merge(bars)
-        .attr("fill", function(response) {
-          return color(response.answer_id);
+        .attr("fill", function(item) {
+          return color(item.answer_id);
         })
         .transition()
         // Set a transition for bars so that we have a slick update.
-        .attr("x", function(response) { return x(response.answer_id); })
+        .attr("x", function(item) { return x(item.answer_id); })
         .attr("width", x.bandwidth())
-        .attr("y", function(response) { return y(response.count); })
-        .attr("height", function(response) {
-          return innerHeight - y(response.count);
+        .attr("y", function(item) { return y(item.count); })
+        .attr("height", function(item) {
+          return innerHeight - y(item.count);
         });
 
       // If the responses disappear from the API such that there is no information for the bar
@@ -605,6 +638,20 @@
     }
 
     $(function($) { // onLoad
+      // there can be only one
+      if (document.querySelector(tooltipSel) === null) {
+        var newTooltip = $(
+          '<div class="rapid-response-tooltip hidden">' +
+          '<div class="tooltip-title"></div>' +
+          '<div class="tooltip-body">' +
+          'Total: <span class="tooltip-total"></span><br />' +
+          'Percent: <span class="tooltip-percent"></span>' +
+          '</div>' +
+          '</div>'
+        );
+        $("body").prepend(newTooltip);
+      }
+
       var block = $element.find(rapidTopLevelSel);
       state.is_open = block.attr('data-open') === 'True';
 
