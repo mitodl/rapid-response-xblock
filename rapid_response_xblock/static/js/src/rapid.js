@@ -68,13 +68,18 @@
 
     // TODO: These values are guesses, maybe we want to calculate based on browser width/height? Not sure
     var ChartSettings = {
-      width: 900,
-      height: 500,
-      top: 80,
-      left: 80,
-      bottom: 200,
-      right: 0,
-      numYAxisTicks: 6
+      top: 50, // space for text for upper label on y axis
+      left: 50, // space for y axis
+      right: 50, // space for text to flow
+      bottom: 150, // space for x axis
+      outerBufferWidth: 200, // pixels on the right and left
+      outerTop: 100, // space between chart and top of container, should contain enough space for buttons
+      innerBufferWidth: 0, // space between two charts
+      numYAxisTicks: 6,
+      minChartWidth: 400,
+      maxChartWidth: 1300,
+      minChartHeight: 500,
+      maxChartHeight: 800
     };
 
     /**
@@ -88,6 +93,40 @@
     }
 
     /**
+     * Calculate width of a chart given the number of charts and the browser width
+     *
+     * @returns {number} Chart width in pixels
+     */
+    function calcChartWidth() {
+      var browserWidth = $(window).width();
+      var numCharts = state.selectedRuns.length;
+      return Math.max(
+        ChartSettings.minChartWidth,
+        Math.min(
+          ChartSettings.maxChartWidth,
+          ((browserWidth - ChartSettings.outerBufferWidth) / numCharts) -
+          (ChartSettings.innerBufferWidth * (numCharts - 1))
+        )
+      );
+    }
+
+    /**
+     * Calculate height of a chart given the browser width
+     *
+     * @returns {number} Chart height in pixels
+     */
+    function calcChartHeight() {
+      var browserHeight = $(window).height();
+      return Math.max(
+        ChartSettings.minChartHeight,
+        Math.min(
+          ChartSettings.maxChartHeight,
+          browserHeight - ChartSettings.outerTop
+        )
+      );
+    }
+
+    /**
      * SVG doesn't have a capability to wrap text except for foreignObject which is not supported in IE11.
      * So we have to calculate it manually for X axis tick labels.
      * See https://bl.ocks.org/mbostock/7555321 for inspiration
@@ -98,32 +137,64 @@
      */
     function wrapText(textSelector, barWidth, text) {
       textSelector.each(function() {
+        // This is a g.tick item
         var root = d3.select(this);
+        var rootText = root.select("text");
 
-        var rootY = root.attr("y");
-        var rootDy = parseFloat(root.attr("dy"));
+        var rootY = rootText.attr("y");
+        var rootDy = parseFloat(rootText.attr("dy"));
+        rootText.remove();
+        root.select("g").remove();
 
-        root.selectAll("tspan").remove();
+        var angle = 30;
+        var radians = angle * Math.PI / 180;
+        // yay trig
+        // this value is the maximum length for the text when laid out at an angle
+        // hypotenuse is divided in half since text is starting in center
+        var maxTextWidth = (barWidth / Math.cos(radians)) / 2;
+        var rootContainer = root.append("g").attr("transform", "rotate(" + angle + ", 0, 10)");
+        rootText = rootContainer.append("text")
+          .attr("fill", "#000")
+          .attr("text-anchor", "start")
+          .attr("dy", rootDy + "em")
+          .attr("y", rootY);
+
         var words = text.split(/\s+/);
-        var tspan = root.append("tspan").attr("x", 0).attr("y", rootY).attr("dy", rootDy + "em");
+        var tspan = rootText.append("tspan").attr("x", 0).attr("y", rootY).attr("dy", rootDy + "em");
 
         var currentLine = 0;
         var lineHeight = 1.1;
+        // Build the text word by word so that it breaks lines appropriately
+        // and cuts off with an ellipsis if it gets too long
         words.forEach(function(word) {
-          if (!word) {
-            // May happen if the input text is empty.
+          // If the input text is empty or we have exceeded two lines
+          // don't do anything
+          if (!word || currentLine > 1) {
             return;
           }
 
-          var tspanText = tspan.text();
-          tspan.text(tspanText + " " + word);
-          if (tspan.node().getComputedTextLength() > barWidth) {
-            // The new word would go beyond the bar width boundary,
-            // so change tspan back to its old text and create one with the
-            // new word on a new line.
+          var compiledText = tspan.text();
+          tspan.text(compiledText + " " + word);
+          if (tspan.node().getComputedTextLength() > maxTextWidth) {
+            // Check if the new word would go beyond the bar width boundary.
+
+            // If this is the first word on the line we don't have a choice but to render it
+            if (compiledText.length === 0) {
+              return;
+            }
+
+            if (currentLine === 1) {
+              // there is a maximum of two lines until we add the ellipses
+              tspan.text(compiledText + "...");
+              currentLine++;
+              return;
+            }
+
+            // Change tspan back to its old text and create a one with the
+            // word on a new line.
             currentLine++;
-            tspan.text(tspanText + " ");
-            tspan = root.append("tspan").attr("x", 0).attr("y", rootY).attr(
+            tspan.text(compiledText + " ");
+            tspan = rootText.append("tspan").attr("x", 0).attr("y", rootY).attr(
               "dy", ((currentLine * lineHeight) + rootDy) + "em"
             ).text(word);
           }
@@ -192,12 +263,11 @@
 
       newSelectionContainers.append("a")
         .classed("close", true)
-        .text("Close ")  // trailing space is intentional, CSS will add a 'X' right after
-        .on('click', closeChart)
-        .append("span")
-        .attr("class", "fa fa-close");
+        .text("Close")
+        .on('click', closeChart);
 
-      var selectionRowsMerged = newSelectionContainers.merge(selectionContainers);
+      var selectionRowsMerged = newSelectionContainers.merge(selectionContainers)
+        .attr("style", "margin-left: " + ChartSettings.left + "px");
       selectionRowsMerged.selectAll(".compare-responses").classed("hidden", function() {
         return chartKeys.length !== 1 || state.is_open || state.runs.length < 2;
       });
@@ -211,7 +281,7 @@
         // The g element has a little bit of padding so the x and y axes can surround it
         .append("g").attr("class", "chart");
       // create x and y axes
-      newCharts.append("g").attr("class", "xaxis").attr("transform", "translate(0," + ChartSettings.height + ")");
+      newCharts.append("g").attr("class", "xaxis");
       newCharts.append("g").attr("class", "yaxis");
 
       newContainers.merge(containers)
@@ -220,10 +290,11 @@
           renderChart(d3.select(charts[index]), index);
         })
         .selectAll("svg")
-        .attr("width", (ChartSettings.width / chartKeys.length) + ChartSettings.left + ChartSettings.right)
-        .attr("height", ChartSettings.height + ChartSettings.top + ChartSettings.bottom)
+        .attr("width", calcChartWidth())
+        .attr("height", calcChartHeight())
         .selectAll(".chart")
-        .attr("transform", "translate(" + ChartSettings.left + "," + ChartSettings.top + ")");
+        .attr("transform", "translate(" + ChartSettings.left + "," + ChartSettings.top + ")")
+        .select(".xaxis");
 
       // Remove charts if selectedRuns reduces in size.
       // We don't need to do this for all the inner elements, the remove will propagate.
@@ -269,10 +340,7 @@
         .attr("value", function(run) { return run.id; })
         .text(function(run) {
           if (run.id === NONE_SELECTION) {
-            if (chartIndex > 0) {
-              return 'Select previous response to compare';
-            }
-            return 'None';
+            return (chartIndex > 0) ? 'Select' : 'None';
           }
           return moment(run.created).format("MMMM D, YYYY, h:mm:ss a");
         });
@@ -288,13 +356,15 @@
 
       // Create x scale to map answer ids to bar x coordinate locations. Note that
       // histogram was previously sorted in order of the lowercase answer id.
+      var innerWidth = calcChartWidth() - ChartSettings.left - ChartSettings.right - ChartSettings.innerBufferWidth;
       var x = d3.scaleBand()
-        .rangeRound([0, ChartSettings.width / state.selectedRuns.length])
+        .rangeRound([0, innerWidth])
         .padding(0.1)
         .domain(histogramAnswerIds);
 
       // Create y scale to map response count to y coordinate for the top of the bar.
-      var y = d3.scaleLinear().rangeRound([ChartSettings.height, 0]).domain(
+      var innerHeight = calcChartHeight() - ChartSettings.top - ChartSettings.bottom;
+      var y = d3.scaleLinear().rangeRound([innerHeight, 0]).domain(
         // pick the maximum count so we know how high the bar chart should go
         [0, d3.max(histogram, function(item) {
           return item.count;
@@ -318,24 +388,23 @@
         .append("rect").attr("class", "bar")
         // Set the height and y values according to the scale. This prevents weird transition behavior
         // where new bars appear to zap in out of nowhere.
-        .attr("y", function(response) { return y(response.count); })
-        .attr("height", function(response) {
-          return ChartSettings.height - y(response.count);
-        })
-        .merge(bars)
-        // Now, for all bars, set the width and x values. No transition is applied for the x axis,
-        // partially because of technical difficulties with the x axis labels and partially because
-        // it looks strange to me
         .attr("x", function(response) { return x(response.answer_id); })
         .attr("width", x.bandwidth())
+        .attr("y", function(response) { return y(response.count); })
+        .attr("height", function(response) {
+          return innerHeight - y(response.count);
+        })
+        .merge(bars)
         .attr("fill", function(response) {
           return color(response.answer_id);
         })
         .transition()
-        // Set a transition for the y axis for bars so that we have a slick update.
+        // Set a transition for bars so that we have a slick update.
+        .attr("x", function(response) { return x(response.answer_id); })
+        .attr("width", x.bandwidth())
         .attr("y", function(response) { return y(response.count); })
         .attr("height", function(response) {
-          return ChartSettings.height - y(response.count);
+          return innerHeight - y(response.count);
         });
 
       // If the responses disappear from the API such that there is no information for the bar
@@ -345,13 +414,18 @@
 
       // Update the X axis
       chart.select(".xaxis")
+        .transition()
         .call(
           d3.axisBottom(x).tickFormat(function() {
-            // Override tick label formatting to make it blank. To fix word wrap we need to do this manually below.
+            // Return null to output no text by default
+            // The wrapText(...) call below will add text manually to let us adjust the angle and fit boundaries
             return null;
           })
         )
-        .selectAll(".tick text")
+        .attr("transform", "translate(0," +
+          (calcChartHeight() - ChartSettings.bottom - ChartSettings.top) +
+        ")")
+        .selectAll(".tick")
         .each(function(answerId, i, nodes) {
           var response = histogramLookup[answerId];
           var answerText = response ? response.answer_text : "";
@@ -371,23 +445,29 @@
             .tickValues(yTickValues)
             .tickFormat(d3.format("d"))
             // make the tick stretch to cover the entire chart
-            .tickSize(-ChartSettings.width)
+            .tickSize(-innerWidth)
         )
         .selectAll(".tick")
         // render the tick line as a dashed line
-        .attr("stroke-dasharray", "8,8");
+        .attr("stroke-dasharray", function(value) {
+          // At 0 the line should be solid to blend in with the chart border
+          return value === 0 ? null : "8,8";
+        })
+        .selectAll("line")
+        .attr("stroke", "rgba(0,0,0,.3)");
 
       // strangely, the default path has a line at the side and one at the top
       // we just want the one on the side
       chart.select(".yaxis .domain").remove();
-      chart.select(".yaxis .line").remove();
       // Render a vertical line at x=0
       chart.select(".yaxis")
         .append("line")
         .classed("line", true)
         .attr("stroke", "#000")
         .attr("x2", 0.5)
-        .attr("y2", ChartSettings.height);
+      chart.select(".yaxis .line")
+        .transition()
+        .attr("y2", innerHeight);
     }
 
     /**
@@ -415,6 +495,11 @@
         is_staff: block.attr('data-staff') === 'True'
       });
       render();
+
+      // adjust graph for each rerender
+      window.addEventListener('resize', function() {
+        render();
+      });
 
       if (state.is_staff) {
         pollForResponses();

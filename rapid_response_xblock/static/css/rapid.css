@@ -1,13 +1,9 @@
 .rapid-response-block {
     background-color: #f7f7f7;
-    padding: 25px;
+    padding: 30px;
 }
 
-.xblock-editor .rapid-response-block {
-    padding: 20px;
-}
-
-.xblock-editor .rapid-response-block label {
+.rapid-response-block label {
     font-size: 14px;
 }
 
@@ -16,7 +12,8 @@ button.problem-status-toggle {
     border: 2px solid #1176b2;
     color: #1176b2;
     background: transparent;
-    font-weight: 700;
+    font-weight: 600;
+    padding: 0.625rem 1rem !important;
 }
 
 button.problem-status-toggle:hover {
@@ -24,20 +21,13 @@ button.problem-status-toggle:hover {
     box-shadow: none;
 }
 
-.rapid-response-content td, .rapid-response-content th {
-    border: 1px solid black;
+.rapid-response-content {
+    height: 70px;
 }
 
-.single-chart .tick text {
-    font-size: 30pt;
-}
-
-.two-charts .tick text {
-    font-size: 20pt;
-}
-
-.two-charts svg {
-    background-color: #ebebeb;
+.tick text {
+    font-size: 13pt !important;
+    fill: rgba(0, 0, 0, 0.87);
 }
 
 text.message {
@@ -48,8 +38,25 @@ text.message {
     display: none;
 }
 
+.rapid-response-results-container {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+
 .rapid-response-results {
     display: flex;
+    flex-direction: row;
+}
+
+.chart-title {
+    color: black;
+    font-weight: 600;
+    padding: 0 0 20px 0;
+}
+
+.selection-container {
+    font-size: 14pt;
 }
 
 .selection-container a {
@@ -57,14 +64,24 @@ text.message {
     cursor: pointer;
 }
 
-.chart-title {
-    color: black;
+.selection-container select {
+    font-size: 13pt;
+    padding: 10px;
+    margin-right: 25px;
 }
 
 .selection-container {
-    font-size: 16pt;
+    font-size: 14pt;
 }
 
 .wrap-instructor-info {
-    visibility: hidden;
+    margin-bottom: 30px;
+}
+
+.wrap-instructor-info br {
+    clear: both;
+}
+
+.xblock {
+    max-width: inherit !important;
 }
