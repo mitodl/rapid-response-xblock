@@ -1,13 +1,14 @@
 """Rapid-response functionality"""
+from datetime import datetime
 import logging
 from functools import wraps
-from collections import namedtuple
 import pkg_resources
 
 from django.db import transaction
 from django.db.models import Count
 from django.template import Context, Template
 from django.utils.translation import ugettext_lazy as _
+import pytz
 from web_fragments.fragment import Fragment
 from webob.response import Response
 from xblock.core import XBlock, XBlockAside
@@ -63,7 +64,6 @@ def staff_only(handler_method):
 
 BLOCK_PROBLEM_CATEGORY = u'problem'
 MULTIPLE_CHOICE_TYPE = 'multiplechoiceresponse'
-LmsTemplateContext = namedtuple('LmsTemplateContext', ['is_staff', 'is_open'])
 
 
 class RapidResponseAside(XBlockAside):
@@ -88,7 +88,9 @@ class RapidResponseAside(XBlockAside):
         fragment.add_content(
             render_template(
                 "static/html/rapid.html",
-                self.get_lms_template_context()
+                {
+                    'is_open': self.has_open_run
+                }
             )
         )
         fragment.add_css(get_resource_bytes("static/css/rapid.css"))
@@ -130,10 +132,9 @@ class RapidResponseAside(XBlockAside):
                 run.open = False
                 run.save()
         return Response(
-            json_body=LmsTemplateContext(
-                is_open=run.open,
-                is_staff=self.is_staff()
-            )._asdict()
+            json_body={
+                'is_open': run.open,
+            }
         )
 
     @XBlock.handler
@@ -168,6 +169,7 @@ class RapidResponseAside(XBlockAside):
             'runs': runs,
             'choices': choices,
             'counts': counts,
+            'server_now': datetime.now(tz=pytz.utc).isoformat(),
         })
 
     @classmethod
@@ -206,19 +208,16 @@ class RapidResponseAside(XBlockAside):
         """Returns True if the user has staff permissions"""
         return getattr(self.runtime, 'user_is_staff', False)
 
-    def get_lms_template_context(self):
+    @property
+    def has_open_run(self):
         """
-        Gets the template context object for the aside when it's first loaded
+        Check if there is an open run for this problem
         """
-        is_open = RapidResponseRun.objects.filter(
+        return RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
             open=True
         ).exists()
-        return LmsTemplateContext(
-            is_open=is_open,
-            is_staff=self.is_staff()
-        )._asdict()
 
     @property
     def choices(self):

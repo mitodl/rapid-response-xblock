@@ -3,6 +3,8 @@
 
   // time between polls of responses API
   var POLLING_MILLIS = 3000;
+  // time between timer rendering updates
+  var TIMER_MILLIS = 1000;
   // color palette for bars
   var PALETTE = [
     '#1e73ae',
@@ -29,41 +31,28 @@
     var rapidBlockContentSel = '.rapid-response-content';
     var rapidBlockResultsSel = '.rapid-response-results';
     var problemStatusBtnSel = '.problem-status-toggle';
-    var toggleTemplate = _.template($(element).find("#rapid-response-toggle-tmpl").text());
+    var buttonsRowSel = '.buttons-row';
+    var timerSel = '.timer';
+    var timerSpinnerSel = '.timer-spinner';
+    var timerSpinnerTextSel = '.timer-spinner-text';
 
     // default values
     var state = {
       is_open: false,
-      is_staff: false,
       runs: [],
       choices: [],
       counts: {},
-      selectedRuns: [null]  // one per chart. null means select the latest one
+      selectedRuns: [null],  // one per chart. null means select the latest one
+      isFetchingResponses: false,  // is there a request in progress? Used to disable button to prevent double clicks
+      lastFetch: null  // a moment object representing the time at last poll, to be used to diff with the run
     };
 
     /**
      * Render template
      */
     function render() {
-      var $rapidBlockContent = $element.find(rapidBlockContentSel);
-      $rapidBlockContent.html(toggleTemplate(state));
+      renderControls();
       renderChartContainer();
-
-      $rapidBlockContent.find(problemStatusBtnSel).click(function() {
-        $.post(toggleStatusUrl).then(
-          function(newState) {
-            // Selected runs should be reset when the open status is changed
-            state = _.assign({}, state, newState, {
-              selectedRuns: [null]
-            });
-            render();
-
-            if (state.is_open) {
-              pollForResponses();
-            }
-          }
-        );
-      });
     }
 
     // TODO: These values are guesses, maybe we want to calculate based on browser width/height? Not sure
@@ -471,38 +460,130 @@
     }
 
     /**
-     * Read from the responses API and put the new value in the rendering state.
-     * If the problem is open, schedule another poll using this function.
+     * millis is the time between current time and the time of last fetch (according to browser), plus
+     * the time between the last fetch and the run creation (according to server)
+     * @returns {number}
+     */
+    function getSecondsSinceRunOpened() {
+      var openRun = _.findWhere(state.runs, {open: true});
+
+      // It should almost always be true that if state.is_open is true that openRun exists
+      // But there is a small delay between when state.is_open is set and when the runs
+      // are refreshed from the server
+      if (openRun) {
+        var millis = moment().diff(state.lastFetch) + moment(state.server_now).diff(moment(openRun.created));
+        return Math.floor(millis / 1000);
+      }
+      return 0;
+    }
+
+    /**
+     * Render buttons and select element above the chart
+     */
+    function renderControls() {
+      var $buttonsRow = $element.find(buttonsRowSel);
+      var $problemButton = $element.find(problemStatusBtnSel);
+      var $timer = $element.find(timerSel);
+      var $timerSpinner = $element.find(timerSpinnerSel);
+      var $timerSpinnerText = $element.find(timerSpinnerTextSel);
+
+      if (state.selectedRuns.length !== 1) {
+        // Don't show these buttons for the the compare view
+        $buttonsRow.toggleClass('hidden', true);
+        return;
+      }
+
+      $buttonsRow.toggleClass('hidden', false);
+      $problemButton.text((state.is_open ? "Close" : "Open") + " Problem Now");
+
+      var totalSeconds = getSecondsSinceRunOpened();
+      var pollSeconds = 0, pollMinutes = 0;
+      if (state.is_open) {
+        pollSeconds = totalSeconds % 60;
+        pollMinutes = Math.floor(totalSeconds / 60);
+      }
+      $timer.text(pollMinutes + "m : " + pollSeconds + "s");
+      $timerSpinner.toggleClass('hidden', !state.is_open);
+      $timerSpinnerText.toggleClass('hidden', !state.is_open);
+    }
+
+    /**
+     * Update the timer every second
+     */
+    function updateTimer() {
+      if (state.is_open) {
+        setTimeout(updateTimer, TIMER_MILLIS);
+      }
+      renderControls();
+    }
+
+    /**
+     * Poll responses API. If the problem is open, schedule another poll using this function.
      */
     function pollForResponses() {
-      $.get(responsesUrl).then(function(newState) {
-        state = _.assign({}, state, newState);
+      if (state.is_open) {
+        setTimeout(pollForResponses, POLLING_MILLIS);
+      }
+      fetchResponsesAndRender();
+    }
 
+    /**
+     * Read from the responses API and put the new value in the rendering state.
+     */
+    function fetchResponsesAndRender() {
+      // make sure this updates at least once a second
+      if (state.isFetchingResponses) {
+        // API call is still in progress
+        return;
+      }
+
+      state.isFetchingResponses = true;
+      $.get(responsesUrl).then(function(newState) {
+        state = _.assign({}, state, newState, {
+          isFetchingResponses: false,
+          lastFetch: moment()
+        });
         render();
-        if (state.is_open) {
-          setTimeout(pollForResponses, POLLING_MILLIS);
-        }
-      }).fail(function () {
-        // TODO: try again?
-        console.error("Error retrieving response data");
       });
     }
 
     $(function($) { // onLoad
       var block = $element.find(rapidTopLevelSel);
-      _.assign(state, {
-        is_open: block.attr('data-open') === 'True',
-        is_staff: block.attr('data-staff') === 'True'
+      state.is_open = block.attr('data-open') === 'True';
+
+      var $rapidBlockContent = $element.find(rapidBlockContentSel);
+      $rapidBlockContent.find(problemStatusBtnSel).click(function() {
+        // disable the button temporarily to prevent double clicks
+        $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", true);
+        $.post(toggleStatusUrl).then(
+          function(newState) {
+            $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", false);
+
+            // Selected runs should be reset when the open status is changed
+            state = _.assign({}, state, newState, {
+              selectedRuns: [null]
+            });
+
+            renderControls();
+            if (state.is_open) {
+              pollForResponses();
+              updateTimer();
+            }
+          }
+        );
       });
-      render();
+
+      renderControls();
+      fetchResponsesAndRender();
 
       // adjust graph for each rerender
       window.addEventListener('resize', function() {
         render();
       });
 
-      if (state.is_staff) {
+      if (state.is_open) {
         pollForResponses();
+        updateTimer();
       }
     });
   }
