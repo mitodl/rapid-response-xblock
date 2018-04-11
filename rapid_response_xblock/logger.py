@@ -82,10 +82,9 @@ class SubmissionRecorder(BaseBackend):
 
         open_run = RapidResponseRun.objects.filter(
             problem_usage_key=sub.problem_usage_key,
-            course_key=sub.course_key,
-            open=True
-        ).first()
-        if not open_run:
+            course_key=sub.course_key
+        ).order_by('-created').first()
+        if not open_run or not open_run.open:
             # Problem is not open
             return
 

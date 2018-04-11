@@ -123,12 +123,18 @@ class RapidResponseAside(XBlockAside):
         Toggles the open/closed status for the rapid-response-enabled block
         """
         with transaction.atomic():
-            run, is_new = RapidResponseRun.objects.get_or_create(
+            run = RapidResponseRun.objects.filter(
                 problem_usage_key=self.wrapped_block_usage_key,
                 course_key=self.course_key,
-                open=True
-            )
-            if not is_new:
+            ).order_by('-created').first()
+
+            if not run or run.open is False:
+                run = RapidResponseRun.objects.create(
+                    problem_usage_key=self.wrapped_block_usage_key,
+                    course_key=self.course_key,
+                    open=True,
+                )
+            else:
                 run.open = False
                 run.save()
         return Response(
@@ -157,6 +163,7 @@ class RapidResponseAside(XBlockAside):
         ).order_by('-created')
         runs = self.serialize_runs(run_querysets)
         # Only the most recent run should possibly be open
+        # If other runs are marked open due to some race condition, look at only the first.
         is_open = runs[0]['open'] if runs else False
         choices = self.choices
         counts = self.get_counts_for_problem(
@@ -213,11 +220,11 @@ class RapidResponseAside(XBlockAside):
         """
         Check if there is an open run for this problem
         """
-        return RapidResponseRun.objects.filter(
+        run = RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
-            open=True
-        ).exists()
+        ).order_by('-created').first()
+        return run and run.open
 
     @property
     def choices(self):
