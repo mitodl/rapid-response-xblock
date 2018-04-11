@@ -51,7 +51,7 @@
      * Render template
      */
     function render() {
-      renderButtons();
+      renderControls();
       renderChartContainer();
     }
 
@@ -480,7 +480,7 @@
     /**
      * Render buttons and select element above the chart
      */
-    function renderButtons() {
+    function renderControls() {
       var $buttonsRow = $element.find(buttonsRowSel);
       var $problemButton = $element.find(problemStatusBtnSel);
       var $timer = $element.find(timerSel);
