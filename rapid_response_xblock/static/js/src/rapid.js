@@ -514,7 +514,7 @@
       if (state.is_open) {
         setTimeout(updateTimer, TIMER_MILLIS);
       }
-      render();
+      renderControls();
     }
 
     /**
