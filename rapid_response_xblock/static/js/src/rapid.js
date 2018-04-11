@@ -167,8 +167,9 @@
         // Build the text word by word so that it breaks lines appropriately
         // and cuts off with an ellipsis if it gets too long
         words.forEach(function(word) {
-          if (!word) {
-            // May happen if the input text is empty.
+          // If the input text is empty or we have exceeded two lines
+          // don't do anything
+          if (!word || currentLine > 1) {
             return;
           }
 
@@ -186,12 +187,6 @@
               // there is a maximum of two lines until we add the ellipses
               tspan.text(compiledText + "...");
               currentLine++;
-              return;
-            }
-
-            if (currentLine > 1) {
-              // maximum of two lines
-              tspan.text(compiledText);
               return;
             }
 
