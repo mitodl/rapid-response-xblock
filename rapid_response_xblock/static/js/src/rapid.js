@@ -352,12 +352,14 @@
       var choices = state.choices;
       var counts = state.counts;
       var selectedRun = getSelectedRun(chartIndex);
+      var totalCounts = state.total_counts;
 
       var histogram = choices.map(function (item) {
         return {
           answer_id: item.answer_id,
           answer_text: item.answer_text,
-          count: counts[item.answer_id][selectedRun] || 0
+          count: counts[item.answer_id][selectedRun] || 0,
+          total: totalCounts[selectedRun] || 0
         }
       });
 
@@ -449,9 +451,9 @@
         })
         .on("mousemove", function(item) {
           var percent = '';
-          if (item.totalResponseCount > 0) {
+          if (item.total > 0) {
             // If there are no responses there should be no visible bars, but just in case
-            percent = Math.round((item.count / item.totalResponseCount) * 100) + "%";
+            percent = Math.round((item.count / item.total) * 100) + "%";
           }
 
           $tooltip.toggleClass('hidden', false)

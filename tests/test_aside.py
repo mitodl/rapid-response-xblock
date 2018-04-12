@@ -217,20 +217,38 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         course_id = self.aside_instance.course_key
         problem_id = self.aside_instance.wrapped_block_usage_key
 
+        choices = [{
+            'answer_id': 'choice_0',
+            'answer_text': 'First answer',
+        }, {
+            'answer_id': 'choice_1',
+            'answer_text': 'Second answer',
+        }]
+
         if has_runs:
-            RapidResponseRun.objects.create(
+            run1 = RapidResponseRun.objects.create(
                 course_key=course_id,
                 problem_usage_key=problem_id,
                 open=False
             )
-            RapidResponseRun.objects.create(
+            run2 = RapidResponseRun.objects.create(
                 course_key=course_id,
                 problem_usage_key=problem_id,
                 open=True
             )
 
-        counts = 'counts'
-        choices = 'choices'
+            counts = {
+                choices[0]['answer_id']: {
+                    run1.id: 3,
+                    run2.id: 4,
+                },
+                choices[1]['answer_id']: {
+                    run1.id: 5,
+                    run2.id: 6,
+                }
+            }
+        else:
+            counts = {}
 
         with patch(
             'rapid_response_xblock.block.RapidResponseAside.get_counts_for_problem', return_value=counts,
@@ -248,6 +266,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.json['choices'] == choices
         assert resp.json['runs'] == RapidResponseAside.serialize_runs(run_queryset)
         assert resp.json['counts'] == counts
+        assert resp.json['total_counts'] == {}
 
         now = datetime.now(tz=pytz.utc)
         minute = timedelta(minutes=1)

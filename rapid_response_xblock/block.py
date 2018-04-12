@@ -171,11 +171,18 @@ class RapidResponseAside(XBlockAside):
             choices,
         )
 
+        total_counts = {
+            run['id']: sum(
+                counts[choice['answer_id']][run['id']] for choice in choices
+            ) for run in runs
+        }
+
         return Response(json_body={
             'is_open': is_open,
             'runs': runs,
             'choices': choices,
             'counts': counts,
+            'total_counts': total_counts,
             'server_now': datetime.now(tz=pytz.utc).isoformat(),
         })
 
