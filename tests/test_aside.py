@@ -241,7 +241,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             get_choices_mock.return_value = choices
             resp = self.aside_instance.responses()
 
-        run_queryset = RapidResponseRun.objects.order_by('-created')
+        run_queryset = RapidResponseRun.objects.all()
         assert resp.status_code == 200
         assert resp.json['is_open'] is has_runs
 

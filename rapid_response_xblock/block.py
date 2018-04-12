@@ -160,7 +160,7 @@ class RapidResponseAside(XBlockAside):
         run_querysets = RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
-        ).order_by('-created')
+        )
         runs = self.serialize_runs(run_querysets)
         # Only the most recent run should possibly be open
         # If other runs are marked open due to some race condition, look at only the first.
