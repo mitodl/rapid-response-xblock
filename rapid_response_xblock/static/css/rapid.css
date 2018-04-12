@@ -127,19 +127,22 @@ text.message {
     border: 1px solid lightgrey;
     background-color: white;
     padding: 10px;
-    line-height: 1.5em;
+    line-height: 1.4;
+    font-size: 11pt;
+    width: 235px;
 }
 
 .rapid-response-tooltip .tooltip-title {
-    font-size: 15pt;
-    font-weight: 700;
+    font-size: 12pt;
+    font-weight: 600;
     padding-bottom: 5px;
+    line-height: 1.2;
 }
 
 .rapid-response-tooltip .tooltip-percent {
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .rapid-response-tooltip .tooltip-total {
-    font-weight: 700;
+    font-weight: 600;
 }
