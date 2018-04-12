@@ -128,15 +128,15 @@ class RapidResponseAside(XBlockAside):
                 course_key=self.course_key,
             ).order_by('-created').first()
 
-            if not run or run.open is False:
+            if run and run.open:
+                run.open = False
+                run.save()
+            else:
                 run = RapidResponseRun.objects.create(
                     problem_usage_key=self.wrapped_block_usage_key,
                     course_key=self.course_key,
                     open=True,
                 )
-            else:
-                run.open = False
-                run.save()
         return Response(
             json_body={
                 'is_open': run.open,
