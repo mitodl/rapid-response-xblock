@@ -139,10 +139,6 @@ text.message {
     line-height: 1.2;
 }
 
-.rapid-response-tooltip .tooltip-percent {
-    font-weight: 600;
-}
-
-.rapid-response-tooltip .tooltip-total {
+.rapid-response-tooltip .tooltip-percent, .rapid-response-tooltip .tooltip-total {
     font-weight: 600;
 }
