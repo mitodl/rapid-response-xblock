@@ -258,3 +258,19 @@ class TestEvents(RuntimeEnabledTestCase):
         assert RapidResponseSubmission.objects.count() == 1
         submission = RapidResponseSubmission.objects.first()
         assert submission.event['test_data'] == event_during['test_data']
+
+    @pytest.mark.usefixtures("example_event")
+    def test_last_open(self):
+        """
+        Only the last run should be considered
+        """
+        RapidResponseRun.objects.create(
+            problem_usage_key=self.example_status.problem_usage_key,
+            course_key=self.example_status.course_key,
+            open=False,
+        )
+
+        recorder = SubmissionRecorder()
+        recorder.send(self.example_event)
+        # The last run has open=False so no submissions should be recorded
+        assert RapidResponseSubmission.objects.count() == 0

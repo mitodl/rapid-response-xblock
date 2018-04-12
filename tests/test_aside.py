@@ -56,6 +56,20 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert bool(fragment.content) is should_render_aside
         assert (fragment.js_init_fn == 'RapidResponseAsideInit') is should_render_aside
 
+    @data(True, False)
+    def test_student_view_context(self, is_open):
+        """
+        Test that the aside student view has the proper context variables
+        """
+        self.aside_instance.enabled = True
+        with patch(
+            'rapid_response_xblock.block.RapidResponseAside.has_open_run',
+            new_callable=PropertyMock,
+        ) as has_open_run_mock:
+            has_open_run_mock.return_value = is_open
+            fragment = self.aside_instance.student_view_aside(Mock())
+        assert 'data-open="{}"'.format(is_open) in fragment.content
+
     @data(*[
         [BLOCK_PROBLEM_CATEGORY, {MULTIPLE_CHOICE_TYPE}, None, True],
         [BLOCK_PROBLEM_CATEGORY, None, Mock(problem_types={MULTIPLE_CHOICE_TYPE}), True],
@@ -120,6 +134,28 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             course_key=course_key,
             open=True
         ).exists() is True
+
+    def test_toggle_block_open_duplicate(self):
+        """Test that toggle_block_open_status only looks at the last run's open status"""
+        usage_key = self.aside_instance.wrapped_block_usage_key
+        course_key = self.aside_instance.course_key
+        RapidResponseRun.objects.create(
+            problem_usage_key=usage_key,
+            course_key=course_key,
+            open=True,
+        )
+        RapidResponseRun.objects.create(
+            problem_usage_key=usage_key,
+            course_key=course_key,
+            open=False,
+        )
+
+        self.aside_instance.toggle_block_open_status(Mock())
+        assert RapidResponseRun.objects.count() == 3
+        assert RapidResponseRun.objects.filter(
+            problem_usage_key=usage_key,
+            course_key=course_key,
+        ).order_by('-created').first().open is True
 
     def test_toggle_block_enabled(self):
         """
@@ -205,7 +241,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             get_choices_mock.return_value = choices
             resp = self.aside_instance.responses()
 
-        run_queryset = RapidResponseRun.objects.order_by('-created')
+        run_queryset = RapidResponseRun.objects.all()
         assert resp.status_code == 200
         assert resp.json['is_open'] is has_runs
 
