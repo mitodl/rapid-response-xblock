@@ -448,18 +448,28 @@
           return innerHeight - y(item.count);
         })
         .on("mousemove", function(item) {
-          $tooltip.toggleClass('hidden', false)
-            .css("left", (d3.event.pageX + 20) + "px")
-            .css("top", d3.event.pageY + "px");
-          $tooltip.find(".tooltip-title").text(item.answer_text);
-          $tooltip.find(".tooltip-total").text(item.count);
-
           var percent = '';
           if (item.totalResponseCount > 0) {
             // If there are no responses there should be no visible bars, but just in case
             percent = Math.round((item.count / item.totalResponseCount) * 100) + "%";
           }
-          $tooltip.find(".tooltip-percent").text(percent);
+
+          $tooltip.toggleClass('hidden', false)
+            .css("left", (d3.event.pageX + 20) + "px")
+            .css("top", d3.event.pageY + "px");
+          var template = _.template(
+            '<div class="tooltip-title"><%= title %></div>' +
+            '<div class="tooltip-body">' +
+            'Total: <span class="tooltip-total"><%= total %></span><br />' +
+            'Percent: <span class="tooltip-percent"><%= percent %></span>' +
+            '</div>'
+          );
+          var templateState = {
+            title: item.answer_text,
+            total: item.count,
+            percent: percent
+          };
+          $tooltip.html(template(templateState));
         })
         .on("mouseout", function() {
           $tooltip.toggleClass('hidden', true);
@@ -641,13 +651,7 @@
       // there can be only one
       if (document.querySelector(tooltipSel) === null) {
         var newTooltip = $(
-          '<div class="rapid-response-tooltip hidden">' +
-          '<div class="tooltip-title"></div>' +
-          '<div class="tooltip-body">' +
-          'Total: <span class="tooltip-total"></span><br />' +
-          'Percent: <span class="tooltip-percent"></span>' +
-          '</div>' +
-          '</div>'
+          '<div class="rapid-response-tooltip hidden"></div>'
         );
         $("body").prepend(newTooltip);
       }
