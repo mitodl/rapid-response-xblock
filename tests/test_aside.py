@@ -247,8 +247,13 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
                     run2.id: 6,
                 }
             }
+            expected_total_counts = {
+                str(run1.id): 8,
+                str(run2.id): 10,
+            }
         else:
             counts = {}
+            expected_total_counts = {}
 
         with patch(
             'rapid_response_xblock.block.RapidResponseAside.get_counts_for_problem', return_value=counts,
@@ -265,8 +270,12 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
 
         assert resp.json['choices'] == choices
         assert resp.json['runs'] == RapidResponseAside.serialize_runs(run_queryset)
-        assert resp.json['counts'] == counts
-        assert resp.json['total_counts'] == {}
+        counts_with_str_keys = {
+            answer_id: {str(run_id): count for run_id, count in runs.items()}
+            for answer_id, runs in counts.items()
+        }
+        assert resp.json['counts'] == counts_with_str_keys
+        assert resp.json['total_counts'] == expected_total_counts
 
         now = datetime.now(tz=pytz.utc)
         minute = timedelta(minutes=1)
