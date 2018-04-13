@@ -38,6 +38,15 @@
     var numStudentsSel = '.num-students';
     var tooltipSel = '.rapid-response-tooltip';
 
+    var tooltipTemplate = _.template(
+      '<div class="tooltip-title"><%= title %></div>' +
+      '<div class="tooltip-body">' +
+      'Total: <span class="tooltip-total"><%= total %></span><br />' +
+      'Percent: <span class="tooltip-percent"><%= percent %></span>' +
+      '</div>'
+    );
+
+
     // default values
     var state = {
       is_open: false,
@@ -433,19 +442,12 @@
           $tooltip.toggleClass('hidden', false)
             .css("left", (d3.event.pageX + 20) + "px")
             .css("top", d3.event.pageY + "px");
-          var template = _.template(
-            '<div class="tooltip-title"><%= title %></div>' +
-            '<div class="tooltip-body">' +
-            'Total: <span class="tooltip-total"><%= total %></span><br />' +
-            'Percent: <span class="tooltip-percent"><%= percent %></span>' +
-            '</div>'
-          );
           var templateState = {
             title: item.answer_text,
             total: item.count,
             percent: percent
           };
-          $tooltip.html(template(templateState));
+          $tooltip.html(tooltipTemplate(templateState));
         })
         .on("mouseout", function() {
           $tooltip.toggleClass('hidden', true);
