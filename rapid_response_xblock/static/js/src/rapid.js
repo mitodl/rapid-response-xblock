@@ -48,9 +48,7 @@
       '</div>'
     );
     // This will get attached to the beginning of <body /> on document load
-    var $tooltipContainer = $(
-      '<div class="rapid-response-tooltip-container"></div>'
-    );
+    var $tooltipContainer;
 
     // default values
     var state = {
@@ -630,7 +628,11 @@
 
     $(function($) { // onLoad
       // there can be only one
-      if (document.querySelector(tooltipContainerSel) === null) {
+      $tooltipContainer = $(tooltipContainerSel);
+      if ($tooltipContainer.length === 0) {
+        $tooltipContainer = $(
+          '<div class="rapid-response-tooltip-container"></div>'
+        );
         $("body").prepend($tooltipContainer);
       }
 
