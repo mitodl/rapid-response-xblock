@@ -620,7 +620,7 @@
 
       state.isFetchingResponses = true;
       $.get(responsesUrl).then(function(newState) {
-        state = _.assign({}, state, newState, {
+        _.assign(state, newState, {
           isFetchingResponses: false,
           lastFetch: moment()
         });
@@ -649,7 +649,7 @@
             $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", false);
 
             // Selected runs should be reset when the open status is changed
-            state = _.assign({}, state, newState, {
+            _.assign(state, newState, {
               selectedRuns: [null]
             });
 
