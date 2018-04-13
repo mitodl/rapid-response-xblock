@@ -57,7 +57,7 @@
      * @returns {string} The message
      */
     function makeNumStudentsMessage(runId) {
-      var totalCount = numResponses(runId);
+      var totalCount = state.total_counts[runId] || 0;
 
       var nounVerb = totalCount === 1 ? 'student has' : 'students have';
 
@@ -326,20 +326,6 @@
     }
 
     /**
-     * Count number of responses for a run
-     * @param {number} runId The run id
-     *
-     * @returns {number} The total number of responses
-     */
-    function numResponses(runId) {
-      var total = 0;
-      state.choices.forEach(function(item) {
-        total += state.counts[item.answer_id][runId] || 0;
-      });
-      return total;
-    }
-
-    /**
      * Render the chart in the container.
      *
      * @param {Object} container D3 selector for the chart container
@@ -367,18 +353,6 @@
       var select = container.select(".selection-container").select("select")
         .classed("hidden", state.runs.length === 0 || state.is_open);
 
-      // We can't access these variables from within the tooltip mouse handlers
-      // because the handler is only set on bar creation, not bar update, so the closure will be out of date.
-      // Instead the count will be added to the histogram as an extra property so it's available as an argument.
-      var totalResponseCount = _.reduce(histogram, function(total, item) {
-        return total + item.count
-      }, 0);
-      histogram = histogram.map(function(item) {
-        return _.assign({}, item, {
-          totalResponseCount: totalResponseCount
-        });
-      });
-
       // D3 data join on runs to create a select list
       var optionData = [{ id: NONE_SELECTION }].concat(runs);
       var options = select.selectAll("option").data(optionData, function(run) {
@@ -389,7 +363,7 @@
         .merge(options)
         .attr("value", function(run) { return run.id; })
         .text(function(run) {
-          var totalCount = numResponses(run.id);
+          var totalCount = state.total_counts[run.id] || 0;
 
           if (run.id === NONE_SELECTION) {
             return (chartIndex > 0) ? 'Select' : 'None';
