@@ -132,7 +132,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert RapidResponseRun.objects.filter(
             problem_usage_key=usage_key,
             course_key=course_key,
-            open=True
+            open=True,
         ).exists() is True
 
     def test_toggle_block_open_duplicate(self):
@@ -331,12 +331,12 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         run1 = RapidResponseRun.objects.create(
             course_key=course_id,
             problem_usage_key=problem_id,
-            open=False
+            open=False,
         )
         run2 = RapidResponseRun.objects.create(
             course_key=course_id,
             problem_usage_key=problem_id,
-            open=True
+            open=True,
         )
 
         assert RapidResponseAside.serialize_runs([run2, run1]) == [{

@@ -28,13 +28,14 @@
     var $element = $(element);
 
     var rapidTopLevelSel = '.rapid-response-block';
-    var rapidBlockContentSel = '.rapid-response-content';
+    var rapidBlockControlsSel = '.rapid-response-controls';
     var rapidBlockResultsSel = '.rapid-response-results';
     var problemStatusBtnSel = '.problem-status-toggle';
     var buttonsRowSel = '.buttons-row';
     var timerSel = '.timer';
     var timerSpinnerSel = '.timer-spinner';
     var timerSpinnerTextSel = '.timer-spinner-text';
+    var numStudentsSel = '.num-students';
 
     // default values
     var state = {
@@ -46,6 +47,21 @@
       isFetchingResponses: false,  // is there a request in progress? Used to disable button to prevent double clicks
       lastFetch: null  // a moment object representing the time at last poll, to be used to diff with the run
     };
+
+    /**
+     * If there is an open problem, return a string showing how many people submitted a response for the open problem
+     * and how many others who are enrolled.
+     *
+     * @param {number} runId The run to create the message for
+     * @returns {string} The message
+     */
+    function makeNumStudentsMessage(runId) {
+      var totalCount = numResponses(runId);
+
+      var nounVerb = totalCount === 1 ? 'student has' : 'students have';
+
+      return totalCount + ' ' + nounVerb + ' answered';
+    }
 
     /**
      * Render template
@@ -291,6 +307,38 @@
     }
 
     /**
+     * Get a selected run id, or undefined if there are no runs
+     *
+     * @param {number} chartIndex Index of the chart
+     * @returns {number} A run id
+     */
+    function getSelectedRun(chartIndex) {
+      var runs = state.runs;
+      var selectedRun = state.selectedRuns[chartIndex];
+
+      if (selectedRun === null && runs.length > 0) {
+        // The newest run should be the most recent one according to the info received from the server.
+        selectedRun = runs[0].id;
+      }
+
+      return selectedRun;
+    }
+
+    /**
+     * Count number of responses for a run
+     * @param {number} runId The run id
+     *
+     * @returns {number} The total number of responses
+     */
+    function numResponses(runId) {
+      var total = 0;
+      state.choices.forEach(function(item) {
+        total += state.counts[item.answer_id][runId] || 0;
+      });
+      return total;
+    }
+
+    /**
      * Render the chart in the container.
      *
      * @param {Object} container D3 selector for the chart container
@@ -298,17 +346,9 @@
      */
     function renderChart(container, chartIndex) {
       var runs = state.runs;
-      var counts = state.counts;
       var choices = state.choices;
-      var selectedRun = state.selectedRuns[chartIndex];
-
-      // select the proper option and use it to filter the runs
-      var select = container.select(".selection-container").select("select")
-        .classed("hidden", state.runs.length === 0 || state.is_open);
-      if (selectedRun === null && runs.length > 0) {
-        // The newest run should be the most recent one according to the info received from the server.
-        selectedRun = runs[0].id;
-      }
+      var counts = state.counts;
+      var selectedRun = getSelectedRun(chartIndex);
 
       var histogram = choices.map(function (item) {
         return {
@@ -318,6 +358,9 @@
         }
       });
 
+      // select the proper option and use it to filter the runs
+      var select = container.select(".selection-container").select("select")
+        .classed("hidden", state.runs.length === 0 || state.is_open);
       // D3 data join on runs to create a select list
       var optionData = [{ id: NONE_SELECTION }].concat(runs);
       var options = select.selectAll("option").data(optionData, function(run) {
@@ -328,10 +371,15 @@
         .merge(options)
         .attr("value", function(run) { return run.id; })
         .text(function(run) {
+          var totalCount = numResponses(run.id);
+
           if (run.id === NONE_SELECTION) {
             return (chartIndex > 0) ? 'Select' : 'None';
           }
-          return moment(run.created).format("MMMM D, YYYY, h:mm:ss a");
+          var dateString = moment(run.created).format("MMMM D, YYYY, h:mm:ss a");
+
+          var noun = totalCount === 1 ? 'Response' : 'Responses';
+          return dateString + " ------- " + totalCount + " " + noun;
         });
       options.exit().remove();
 
@@ -453,7 +501,7 @@
         .append("line")
         .classed("line", true)
         .attr("stroke", "#000")
-        .attr("x2", 0.5)
+        .attr("x2", 0.5);
       chart.select(".yaxis .line")
         .transition()
         .attr("y2", innerHeight);
@@ -486,6 +534,7 @@
       var $timer = $element.find(timerSel);
       var $timerSpinner = $element.find(timerSpinnerSel);
       var $timerSpinnerText = $element.find(timerSpinnerTextSel);
+      var $numStudents = $element.find(numStudentsSel);
 
       if (state.selectedRuns.length !== 1) {
         // Don't show these buttons for the the compare view
@@ -503,8 +552,16 @@
         pollMinutes = Math.floor(totalSeconds / 60);
       }
       $timer.text(pollMinutes + "m : " + pollSeconds + "s");
+      $timer.toggleClass("on", state.is_open);
       $timerSpinner.toggleClass('hidden', !state.is_open);
       $timerSpinnerText.toggleClass('hidden', !state.is_open);
+      $numStudents.toggleClass('hidden', !state.is_open);
+
+      // using chartIndex 0 since this message should only get shown if there is only one chart visible
+      if (state.runs.length > 0 && state.is_open) {
+        var numStudentsMessage = makeNumStudentsMessage(getSelectedRun(0));
+        $numStudents.text(numStudentsMessage);
+      }
     }
 
     /**
@@ -551,7 +608,7 @@
       var block = $element.find(rapidTopLevelSel);
       state.is_open = block.attr('data-open') === 'True';
 
-      var $rapidBlockContent = $element.find(rapidBlockContentSel);
+      var $rapidBlockContent = $element.find(rapidBlockControlsSel);
       $rapidBlockContent.find(problemStatusBtnSel).click(function() {
         // disable the button temporarily to prevent double clicks
         $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", true);
@@ -568,10 +625,19 @@
             if (state.is_open) {
               pollForResponses();
               updateTimer();
+            } else {
+              fetchResponsesAndRender();
             }
           }
         );
       });
+
+      // This contains the staff-only buttons
+      var $wrapInstructorInfo = $element.parent().find(".wrap-instructor-info");
+      if ($wrapInstructorInfo.length) {
+        // The BR element will clear the floats via the CSS rule
+        $wrapInstructorInfo.append($("<br />"));
+      }
 
       renderControls();
       fetchResponsesAndRender();
