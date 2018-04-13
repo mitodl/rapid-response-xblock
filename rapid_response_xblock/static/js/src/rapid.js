@@ -36,6 +36,19 @@
     var timerSpinnerSel = '.timer-spinner';
     var timerSpinnerTextSel = '.timer-spinner-text';
     var numStudentsSel = '.num-students';
+    var tooltipContainerSel = '.rapid-response-tooltip-container';
+
+    var tooltipTemplate = _.template(
+      '<div class="rapid-response-tooltip">' +
+      '<div class="tooltip-title"><%= title %></div>' +
+      '<div class="tooltip-body">' +
+      'Total: <span class="tooltip-total"><%= total %></span><br />' +
+      'Percent: <span class="tooltip-percent"><%= percent %></span>' +
+      '</div>' +
+      '</div>'
+    );
+    // This will get attached to the beginning of <body /> on document load
+    var $tooltipContainer;
 
     // default values
     var state = {
@@ -56,7 +69,7 @@
      * @returns {string} The message
      */
     function makeNumStudentsMessage(runId) {
-      var totalCount = numResponses(runId);
+      var totalCount = state.total_counts[runId] || 0;
 
       var nounVerb = totalCount === 1 ? 'student has' : 'students have';
 
@@ -325,20 +338,6 @@
     }
 
     /**
-     * Count number of responses for a run
-     * @param {number} runId The run id
-     *
-     * @returns {number} The total number of responses
-     */
-    function numResponses(runId) {
-      var total = 0;
-      state.choices.forEach(function(item) {
-        total += state.counts[item.answer_id][runId] || 0;
-      });
-      return total;
-    }
-
-    /**
      * Render the chart in the container.
      *
      * @param {Object} container D3 selector for the chart container
@@ -349,18 +348,21 @@
       var choices = state.choices;
       var counts = state.counts;
       var selectedRun = getSelectedRun(chartIndex);
+      var totalCounts = state.total_counts;
 
       var histogram = choices.map(function (item) {
         return {
           answer_id: item.answer_id,
           answer_text: item.answer_text,
-          count: counts[item.answer_id][selectedRun] || 0
+          count: counts[item.answer_id][selectedRun] || 0,
+          total: totalCounts[selectedRun] || 0
         }
       });
 
       // select the proper option and use it to filter the runs
       var select = container.select(".selection-container").select("select")
         .classed("hidden", state.runs.length === 0 || state.is_open);
+
       // D3 data join on runs to create a select list
       var optionData = [{ id: NONE_SELECTION }].concat(runs);
       var options = select.selectAll("option").data(optionData, function(run) {
@@ -371,7 +373,7 @@
         .merge(options)
         .attr("value", function(run) { return run.id; })
         .text(function(run) {
-          var totalCount = numResponses(run.id);
+          var totalCount = state.total_counts[run.id] || 0;
 
           if (run.id === NONE_SELECTION) {
             return (chartIndex > 0) ? 'Select' : 'None';
@@ -425,23 +427,44 @@
         .append("rect").attr("class", "bar")
         // Set the height and y values according to the scale. This prevents weird transition behavior
         // where new bars appear to zap in out of nowhere.
-        .attr("x", function(response) { return x(response.answer_id); })
+        .attr("x", function(item) { return x(item.answer_id); })
         .attr("width", x.bandwidth())
-        .attr("y", function(response) { return y(response.count); })
-        .attr("height", function(response) {
-          return innerHeight - y(response.count);
+        .attr("y", function(item) { return y(item.count); })
+        .attr("height", function(item) {
+          return innerHeight - y(item.count);
+        })
+        .on("mouseover", function(item) {
+          var percent = '';
+          if (item.total > 0) {
+            // If there are no responses there should be no visible bars, but just in case
+            percent = Math.round((item.count / item.total) * 100) + "%";
+          }
+
+          var templateState = {
+            title: item.answer_text,
+            total: item.count,
+            percent: percent
+          };
+          $tooltipContainer.html(tooltipTemplate(templateState));
+        })
+        .on("mousemove", function() {
+          $tooltipContainer.css("left", (d3.event.pageX + 20) + "px")
+            .css("top", d3.event.pageY + "px");
+        })
+        .on("mouseout", function() {
+          $tooltipContainer.html('');
         })
         .merge(bars)
-        .attr("fill", function(response) {
-          return color(response.answer_id);
+        .attr("fill", function(item) {
+          return color(item.answer_id);
         })
         .transition()
         // Set a transition for bars so that we have a slick update.
-        .attr("x", function(response) { return x(response.answer_id); })
+        .attr("x", function(item) { return x(item.answer_id); })
         .attr("width", x.bandwidth())
-        .attr("y", function(response) { return y(response.count); })
-        .attr("height", function(response) {
-          return innerHeight - y(response.count);
+        .attr("y", function(item) { return y(item.count); })
+        .attr("height", function(item) {
+          return innerHeight - y(item.count);
         });
 
       // If the responses disappear from the API such that there is no information for the bar
@@ -513,16 +536,15 @@
      * @returns {number}
      */
     function getSecondsSinceRunOpened() {
-      var openRun = _.findWhere(state.runs, {open: true});
-
-      // It should almost always be true that if state.is_open is true that openRun exists
-      // But there is a small delay between when state.is_open is set and when the runs
-      // are refreshed from the server
-      if (openRun) {
-        var millis = moment().diff(state.lastFetch) + moment(state.server_now).diff(moment(openRun.created));
-        return Math.floor(millis / 1000);
+      if (state.runs.length === 0) {
+        return 0;
       }
-      return 0;
+      var run = state.runs[0];
+      if (!run.open) {
+        return 0;
+      }
+      var millis = moment().diff(state.lastFetch) + moment(state.server_now).diff(moment(run.created));
+      return Math.floor(millis / 1000);
     }
 
     /**
@@ -596,7 +618,7 @@
 
       state.isFetchingResponses = true;
       $.get(responsesUrl).then(function(newState) {
-        state = _.assign({}, state, newState, {
+        _.assign(state, newState, {
           isFetchingResponses: false,
           lastFetch: moment()
         });
@@ -605,19 +627,37 @@
     }
 
     $(function($) { // onLoad
+      // there can be only one
+      $tooltipContainer = $(tooltipContainerSel);
+      if ($tooltipContainer.length === 0) {
+        $tooltipContainer = $(
+          '<div class="rapid-response-tooltip-container"></div>'
+        );
+        $("body").prepend($tooltipContainer);
+      }
+
       var block = $element.find(rapidTopLevelSel);
       state.is_open = block.attr('data-open') === 'True';
 
       var $rapidBlockContent = $element.find(rapidBlockControlsSel);
+
+      var linkIsDisabled = false;
+
       $rapidBlockContent.find(problemStatusBtnSel).click(function() {
+        if (linkIsDisabled) {
+          return;
+        }
+
         // disable the button temporarily to prevent double clicks
-        $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", true);
+        linkIsDisabled = true;
+        $rapidBlockContent.find(problemStatusBtnSel).toggleClass("disabled", true);
         $.post(toggleStatusUrl).then(
           function(newState) {
-            $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", false);
+            linkIsDisabled = false;
+            $rapidBlockContent.find(problemStatusBtnSel).toggleClass("disabled", false);
 
             // Selected runs should be reset when the open status is changed
-            state = _.assign({}, state, newState, {
+            _.assign(state, newState, {
               selectedRuns: [null]
             });
 

@@ -18,6 +18,12 @@
     cursor: pointer;
 }
 
+.problem-status-toggle.disabled {
+    color: #7a7a7a;
+    cursor: none;
+    border: 2px solid #7a7a7a;
+}
+
 .rapid-response-title {
     display: flex;
     flex-direction: row;
@@ -119,4 +125,29 @@ text.message {
 
 .num-students {
     font-size: 14pt;
+}
+
+.rapid-response-tooltip-container {
+    position: absolute;
+    z-index: 2;
+}
+
+.rapid-response-tooltip {
+    border: 1px solid lightgrey;
+    background-color: white;
+    padding: 10px;
+    line-height: 1.4;
+    font-size: 11pt;
+    width: 235px;
+}
+
+.rapid-response-tooltip .tooltip-title {
+    font-size: 12pt;
+    font-weight: 600;
+    padding-bottom: 5px;
+    line-height: 1.2;
+}
+
+.rapid-response-tooltip .tooltip-percent, .rapid-response-tooltip .tooltip-total {
+    font-weight: 600;
 }
