@@ -121,9 +121,12 @@ text.message {
     font-size: 14pt;
 }
 
-.rapid-response-tooltip {
+.rapid-response-tooltip-container {
     position: absolute;
     z-index: 2;
+}
+
+.rapid-response-tooltip {
     border: 1px solid lightgrey;
     background-color: white;
     padding: 10px;

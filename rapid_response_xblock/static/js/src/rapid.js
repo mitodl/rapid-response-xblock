@@ -36,13 +36,15 @@
     var timerSpinnerSel = '.timer-spinner';
     var timerSpinnerTextSel = '.timer-spinner-text';
     var numStudentsSel = '.num-students';
-    var tooltipSel = '.rapid-response-tooltip';
+    var tooltipContainerSel = '.rapid-response-tooltip-container';
 
     var tooltipTemplate = _.template(
+      '<div class="rapid-response-tooltip">' +
       '<div class="tooltip-title"><%= title %></div>' +
       '<div class="tooltip-body">' +
       'Total: <span class="tooltip-total"><%= total %></span><br />' +
       'Percent: <span class="tooltip-percent"><%= percent %></span>' +
+      '</div>' +
       '</div>'
     );
 
@@ -341,7 +343,7 @@
      * @param {number} chartIndex The index of the chart (either 0 or 1)
      */
     function renderChart(container, chartIndex) {
-      var $tooltip = $(tooltipSel);
+      var $tooltipContainer = $(tooltipContainerSel);
 
       var runs = state.runs;
       var choices = state.choices;
@@ -432,25 +434,26 @@
         .attr("height", function(item) {
           return innerHeight - y(item.count);
         })
-        .on("mousemove", function(item) {
+        .on("mouseover", function(item) {
           var percent = '';
           if (item.total > 0) {
             // If there are no responses there should be no visible bars, but just in case
             percent = Math.round((item.count / item.total) * 100) + "%";
           }
 
-          $tooltip.toggleClass('hidden', false)
-            .css("left", (d3.event.pageX + 20) + "px")
-            .css("top", d3.event.pageY + "px");
           var templateState = {
             title: item.answer_text,
             total: item.count,
             percent: percent
           };
-          $tooltip.html(tooltipTemplate(templateState));
+          $tooltipContainer.html(tooltipTemplate(templateState));
+        })
+        .on("mousemove", function() {
+          $tooltipContainer.css("left", (d3.event.pageX + 20) + "px")
+            .css("top", d3.event.pageY + "px");
         })
         .on("mouseout", function() {
-          $tooltip.toggleClass('hidden', true);
+          $tooltipContainer.html('');
         })
         .merge(bars)
         .attr("fill", function(item) {
@@ -627,9 +630,9 @@
 
     $(function($) { // onLoad
       // there can be only one
-      if (document.querySelector(tooltipSel) === null) {
+      if (document.querySelector(tooltipContainerSel) === null) {
         var newTooltip = $(
-          '<div class="rapid-response-tooltip hidden"></div>'
+          '<div class="rapid-response-tooltip-container"></div>'
         );
         $("body").prepend(newTooltip);
       }
