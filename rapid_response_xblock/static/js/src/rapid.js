@@ -537,16 +537,15 @@
      * @returns {number}
      */
     function getSecondsSinceRunOpened() {
-      var openRun = _.findWhere(state.runs, {open: true});
-
-      // It should almost always be true that if state.is_open is true that openRun exists
-      // But there is a small delay between when state.is_open is set and when the runs
-      // are refreshed from the server
-      if (openRun) {
-        var millis = moment().diff(state.lastFetch) + moment(state.server_now).diff(moment(openRun.created));
-        return Math.floor(millis / 1000);
+      if (state.runs.length === 0) {
+        return 0;
       }
-      return 0;
+      var run = state.runs[0];
+      if (!run.open) {
+        return 0;
+      }
+      var millis = moment().diff(state.lastFetch) + moment(state.server_now).diff(moment(run.created));
+      return Math.floor(millis / 1000);
     }
 
     /**
@@ -641,12 +640,21 @@
       state.is_open = block.attr('data-open') === 'True';
 
       var $rapidBlockContent = $element.find(rapidBlockControlsSel);
+
+      var linkIsDisabled = false;
+
       $rapidBlockContent.find(problemStatusBtnSel).click(function() {
+        if (linkIsDisabled) {
+          return;
+        }
+
         // disable the button temporarily to prevent double clicks
-        $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", true);
+        linkIsDisabled = true;
+        $rapidBlockContent.find(problemStatusBtnSel).toggleClass("disabled", true);
         $.post(toggleStatusUrl).then(
           function(newState) {
-            $rapidBlockContent.find(problemStatusBtnSel).prop("disabled", false);
+            linkIsDisabled = false;
+            $rapidBlockContent.find(problemStatusBtnSel).toggleClass("disabled", false);
 
             // Selected runs should be reset when the open status is changed
             _.assign(state, newState, {

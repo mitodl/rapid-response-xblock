@@ -18,6 +18,12 @@
     cursor: pointer;
 }
 
+.problem-status-toggle.disabled {
+    color: #7a7a7a;
+    cursor: none;
+    border: 2px solid #7a7a7a;
+}
+
 .rapid-response-title {
     display: flex;
     flex-direction: row;
