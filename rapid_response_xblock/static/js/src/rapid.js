@@ -47,7 +47,10 @@
       '</div>' +
       '</div>'
     );
-
+    // This will get attached to the beginning of <body /> on document load
+    var $tooltipContainer = $(
+      '<div class="rapid-response-tooltip-container"></div>'
+    );
 
     // default values
     var state = {
@@ -343,8 +346,6 @@
      * @param {number} chartIndex The index of the chart (either 0 or 1)
      */
     function renderChart(container, chartIndex) {
-      var $tooltipContainer = $(tooltipContainerSel);
-
       var runs = state.runs;
       var choices = state.choices;
       var counts = state.counts;
@@ -630,10 +631,7 @@
     $(function($) { // onLoad
       // there can be only one
       if (document.querySelector(tooltipContainerSel) === null) {
-        var newTooltip = $(
-          '<div class="rapid-response-tooltip-container"></div>'
-        );
-        $("body").prepend(newTooltip);
+        $("body").prepend($tooltipContainer);
       }
 
       var block = $element.find(rapidTopLevelSel);
