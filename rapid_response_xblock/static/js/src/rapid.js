@@ -403,11 +403,16 @@
 
       // Create y scale to map response count to y coordinate for the top of the bar.
       var innerHeight = calcChartHeight() - ChartSettings.top - ChartSettings.bottom;
+      var yDomainMax = d3.max(choices, function(choice) {
+        return d3.max(_.keys(state.selectedRuns), function(chartIndex) {
+          var runId = getSelectedRun(chartIndex);
+          return counts[choice.answer_id][runId] || 0;
+        });
+      });
+
       var y = d3.scaleLinear().rangeRound([innerHeight, 0]).domain(
         // pick the maximum count so we know how high the bar chart should go
-        [0, d3.max(histogram, function(item) {
-          return item.count;
-        })]
+        [0, yDomainMax]
       );
       // Create a color scale similar to the x scale to provide colors for each bar
       var color = d3.scaleOrdinal(PALETTE).domain(histogramAnswerIds);
@@ -495,9 +500,7 @@
       // Update the Y axis.
       // By default it assumes a continuous scale, but we just want to show integers so we need to create the ticks
       // manually.
-      var yDomainMax = y.domain()[1];
-      // May be NaN if the responses are empty
-      var yTickValues = !isNaN(yDomainMax) ? makeIntegerTicks(y.domain()[1]) : [];
+      var yTickValues = makeIntegerTicks(yDomainMax);
       chart.select(".yaxis")
         .transition() // transition to match the bar update
         .call(
