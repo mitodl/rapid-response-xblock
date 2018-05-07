@@ -1,10 +1,6 @@
 Release Notes
 =============
 
-Version 0.0.3
--------------
-
-No new commits
 Version 0.0.2
 -------------
 

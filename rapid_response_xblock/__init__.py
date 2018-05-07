@@ -1,2 +1,2 @@
 """rapid_response_xblock Django app"""
-__version__ = '0.0.3'
+__version__ = '0.0.2'
