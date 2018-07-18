@@ -11,7 +11,7 @@ NOTE: We had to make several fixes to XBlock Asides in `edx-platform` in order t
 The following setup steps are also needed to enable rapid response problems in LMS and Studio:
 1. Add the following to at the top level of `cms.env.json`: `ALLOW_ALL_ADVANCED_COMPONENTS: true`
 1. Make sure `cms.env.json` and `lms.env.json` include this XBlock as an installed app: `ADDL_INSTALLED_APPS: ['rapid_response_xblock']`
-1. Create a record for the `XBlockAsidesConfig` model (admin URL: `/admin/lms_xblock/xblockasidesconfig/`)
+1. Create a record for the `XBlockAsidesConfig` model (LMS admin URL: `/admin/lms_xblock/xblockasidesconfig/`)
 
 After these steps, you should be able to see an extra tab in the 'Edit' modal for multiple choice problems in Studio. That extra tab should contain a checkbox that lets you configure the problem as rapid response.
 
