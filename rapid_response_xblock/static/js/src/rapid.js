@@ -4,7 +4,14 @@
   // time between polls of responses API
   var POLLING_MILLIS = 3000;
   // time between timer rendering updates
-  var TIMER_MILLIS = 1000;
+  var TIMER_MILLIS = 250;
+  // Timeout (in ms) for AJAX requests
+  var REQUEST_TIMEOUT_MILLIS = (POLLING_MILLIS * 3) + 100;
+  // Timeout (in ms) for the initial AJAX request to fetch responses and the current problem state.
+  var INIT_REQUEST_TIMEOUT_MILLIS = REQUEST_TIMEOUT_MILLIS * 2;
+  // The number of times that the responses endpoint should be polled unsuccessfully before showing
+  // a warning to the user.
+  var RESPONSES_ATTEMPTS_BEFORE_WARN = 1;
   // color palette for bars
   var PALETTE = [
     '#1e73ae',
@@ -22,19 +29,77 @@
   // this sentinel value means no data should be shown
   var NONE_SELECTION = 'None';
 
+  // An object that maps UI state names to the UI artifacts that should be shown when the UI is in
+  // that state.
+  var UiStates = {
+    initial: {
+      buttonVis: false,
+      timerVis: false,
+      spinnerVis: true,
+      problemStatusText: "Loading responses..."
+    },
+    open: {
+      buttonText: "Close problem now",
+      buttonVis: true,
+      buttonEnabled: true,
+      timerVis: true,
+      spinnerVis: true,
+      problemStatusText: "Problem is Open"
+    },
+    closed: {
+      buttonText: "Open problem now",
+      buttonVis: true,
+      buttonEnabled: true,
+      timerEnabled: false,
+      spinnerVis: false,
+      problemStatusText: undefined
+    },
+    closing: {
+      buttonText: "Close problem now",
+      buttonVis: true,
+      buttonEnabled: false,
+      timerVis: true,
+      timerEnabled: true,
+      spinnerVis: true,
+      problemStatusText: "Problem is closing..."
+    }
+  };
+  UiStates.opening = _.assign({}, UiStates.closing, {
+    buttonText: "Open problem now",
+    problemStatusText: "Opening problem for responses..."
+  });
+  UiStates.fetchingFinal = _.assign({}, UiStates.closing, {
+    problemStatusText: "Retrieving latest responses..."
+  });
+  UiStates.openDelayed = _.assign({}, UiStates.open, {
+    problemWarningText: "The server is taking a while to respond..."
+  });
+  UiStates.openTimedOut = _.assign({}, UiStates.open, {
+    problemWarningText: "The server took too long to respond. Aborting the request and trying again..."
+  });
+  UiStates.closingTimedOut = _.assign({}, UiStates.closing, {
+    spinnerVis: false,
+    problemStatusText: undefined,
+    problemWarningText: "The server took too long to respond. Please try reloading the page."
+  });
+  UiStates.loadingTimedOut = _.assign({}, UiStates.closingTimedOut, {
+    buttonVis: false,
+    timerVis: false,
+  });
+
   function RapidResponseAsideView(runtime, element) {
     var toggleStatusUrl = runtime.handlerUrl(element, 'toggle_block_open_status');
     var responsesUrl = runtime.handlerUrl(element, 'responses');
     var $element = $(element);
 
-    var rapidTopLevelSel = '.rapid-response-block';
-    var rapidBlockControlsSel = '.rapid-response-controls';
     var rapidBlockResultsSel = '.rapid-response-results';
     var problemStatusBtnSel = '.problem-status-toggle';
     var buttonsRowSel = '.buttons-row';
-    var timerSel = '.timer';
-    var timerSpinnerSel = '.timer-spinner';
-    var timerSpinnerTextSel = '.timer-spinner-text';
+    var timerSel = '.timer-readout';
+    var problemStatusSpinnerSel = '.problem-status-spinner';
+    var problemStatusTextSel = '.problem-status-text';
+    var problemStatusWarningSel = '.problem-status-warning';
+    var problemStatusWarningTextSel = '.warning-text';
     var numStudentsSel = '.num-students';
     var tooltipContainerSel = '.rapid-response-tooltip-container';
 
@@ -57,32 +122,14 @@
       choices: [],
       counts: {},
       selectedRuns: [null],  // one per chart. null means select the latest one
-      isFetchingResponses: false,  // is there a request in progress? Used to disable button to prevent double clicks
-      lastFetch: null  // a moment object representing the time at last poll, to be used to diff with the run
+      isChangingStatus: false,
+      lastFetch: null,  // a moment object representing the time at last poll, to be used to diff with the run,
+      timerInterval: null,
+      responsesPollingTimeout: null,
+      responsesAbortableRequest: null,
+      responsesRequestAttemptCount: 0,
+      ui: ""
     };
-
-    /**
-     * If there is an open problem, return a string showing how many people submitted a response for the open problem
-     * and how many others who are enrolled.
-     *
-     * @param {number} runId The run to create the message for
-     * @returns {string} The message
-     */
-    function makeNumStudentsMessage(runId) {
-      var totalCount = state.total_counts[runId] || 0;
-
-      var nounVerb = totalCount === 1 ? 'student has' : 'students have';
-
-      return totalCount + ' ' + nounVerb + ' answered';
-    }
-
-    /**
-     * Render template
-     */
-    function render() {
-      renderControls();
-      renderChartContainer();
-    }
 
     // TODO: These values are guesses, maybe we want to calculate based on browser width/height? Not sure
     var ChartSettings = {
@@ -99,6 +146,38 @@
       minChartHeight: 500,
       maxChartHeight: 800
     };
+
+    /**
+     * Makes an AJAX request, creates a promise out of it, and returns that promise along with a
+     *   method that can be invoked to abort the request.
+     * @param {string} url The url to use for the request.
+     * @param {Object} opts The options to pass to jQuery.ajax.
+     * @returns {Object} An object that includes a promise representing the AJAX request, a method that
+     *   can be used to abort the request, and a helper method to check if the request is in progress.
+     */
+    function makeAbortableRequest(url, opts) {
+      opts = opts || {};
+      opts.url = url;
+      opts.method = opts.method || "GET";
+      opts.timeout = opts.timeout || REQUEST_TIMEOUT_MILLIS;
+
+      var deferred = new $.Deferred();
+      var request = $.ajax(opts);
+      request.then(function (result) {
+        deferred.resolve(result);
+      }).fail(function (jqXHR, textStatus) {
+        deferred.reject(textStatus);
+      });
+      var promise = deferred.promise();
+      var isPending = function() {
+        return promise.state() === "pending";
+      };
+      var abort = function() {
+        request.abort();
+        deferred.reject();
+      };
+      return {promise: promise, abort: abort, isPending: isPending}
+    }
 
     /**
      * Given the domain limits return some tick values, equally spaced out, all integers.
@@ -226,7 +305,7 @@
      */
     function closeChart(chartIndex) {
       state.selectedRuns.splice(chartIndex, 1);
-      render();
+      renderAll();
     }
 
     /**
@@ -239,7 +318,7 @@
         selectedRun = parseInt(selectedRun);
       }
       state.selectedRuns[chartIndex] = selectedRun;
-      render();
+      renderAll();
     }
 
     /**
@@ -247,7 +326,40 @@
      */
     function openNewChart() {
       state.selectedRuns = [state.selectedRuns[0], NONE_SELECTION];
-      render();
+      renderAll();
+    }
+
+    /**
+     * Get a selected run id, or undefined if there are no runs
+     *
+     * @param {number} chartIndex Index of the chart
+     * @returns {number} A run id
+     */
+    function getSelectedRun(chartIndex) {
+      var runs = state.runs;
+      var selectedRun = state.selectedRuns[chartIndex];
+      if (selectedRun === null && runs.length > 0) {
+        // The newest run should be the most recent one according to the info received from the server.
+        selectedRun = runs[0].id;
+      }
+      return selectedRun;
+    }
+
+    /**
+     * If there is an open problem, return a string showing how many people submitted a response for the open problem
+     * and how many others who are enrolled.
+     *
+     * @param {number} runId The run to create the message for
+     * @returns {string} The message
+     */
+    function makeNumStudentsMessage(runId) {
+      var totalCount = state.total_counts[runId] || 0;
+      var nounVerb = totalCount === 1 ? 'student has' : 'students have';
+      return totalCount + ' ' + nounVerb + ' answered';
+    }
+
+    function formatTime(seconds) {
+      return Math.floor(seconds / 60) + "m : " + (seconds % 60) + "s"
     }
 
     /**
@@ -287,7 +399,7 @@
       var selectionRowsMerged = newSelectionContainers.merge(selectionContainers)
         .attr("style", "margin-left: " + ChartSettings.left + "px");
       selectionRowsMerged.selectAll(".compare-responses").classed("hidden", function() {
-        return chartKeys.length !== 1 || state.is_open || state.runs.length < 2;
+        return chartKeys.length !== 1 || state.ui !== "closed" || state.runs.length < 2;
       });
       selectionRowsMerged.selectAll(".close").classed("hidden", function() {
         return chartKeys.length === 1;
@@ -319,22 +431,14 @@
       containers.exit().remove();
     }
 
+    //---------------------
+
     /**
-     * Get a selected run id, or undefined if there are no runs
-     *
-     * @param {number} chartIndex Index of the chart
-     * @returns {number} A run id
+     * Render template
      */
-    function getSelectedRun(chartIndex) {
-      var runs = state.runs;
-      var selectedRun = state.selectedRuns[chartIndex];
-
-      if (selectedRun === null && runs.length > 0) {
-        // The newest run should be the most recent one according to the info received from the server.
-        selectedRun = runs[0].id;
-      }
-
-      return selectedRun;
+    function renderAll() {
+      renderControls();
+      renderChartContainer();
     }
 
     /**
@@ -361,7 +465,7 @@
 
       // select the proper option and use it to filter the runs
       var select = container.select(".selection-container").select("select")
-        .classed("hidden", state.runs.length === 0 || state.is_open);
+        .classed("hidden", state.runs.length === 0 || state.ui !== "closed");
 
       // D3 data join on runs to create a select list
       var optionData = [{ id: NONE_SELECTION }].concat(runs);
@@ -534,31 +638,15 @@
     }
 
     /**
-     * millis is the time between current time and the time of last fetch (according to browser), plus
-     * the time between the last fetch and the run creation (according to server)
-     * @returns {number}
-     */
-    function getSecondsSinceRunOpened() {
-      if (state.runs.length === 0) {
-        return 0;
-      }
-      var run = state.runs[0];
-      if (!run.open) {
-        return 0;
-      }
-      var millis = moment().diff(state.lastFetch) + moment(state.server_now).diff(moment(run.created));
-      return Math.floor(millis / 1000);
-    }
-
-    /**
      * Render buttons and select element above the chart
      */
     function renderControls() {
       var $buttonsRow = $element.find(buttonsRowSel);
       var $problemButton = $element.find(problemStatusBtnSel);
+      var $problemStatusSpinner = $element.find(problemStatusSpinnerSel);
+      var $problemStatusText = $element.find(problemStatusTextSel);
+      var $problemWarning = $element.find(problemStatusWarningSel);
       var $timer = $element.find(timerSel);
-      var $timerSpinner = $element.find(timerSpinnerSel);
-      var $timerSpinnerText = $element.find(timerSpinnerTextSel);
       var $numStudents = $element.find(numStudentsSel);
 
       if (state.selectedRuns.length !== 1) {
@@ -566,37 +654,31 @@
         $buttonsRow.toggleClass('hidden', true);
         return;
       }
-
       $buttonsRow.toggleClass('hidden', false);
-      $problemButton.text((state.is_open ? "Close" : "Open") + " Problem Now");
-
-      var totalSeconds = getSecondsSinceRunOpened();
-      var pollSeconds = 0, pollMinutes = 0;
-      if (state.is_open) {
-        pollSeconds = totalSeconds % 60;
-        pollMinutes = Math.floor(totalSeconds / 60);
-      }
-      $timer.text(pollMinutes + "m : " + pollSeconds + "s");
-      $timer.toggleClass("on", state.is_open);
-      $timerSpinner.toggleClass('hidden', !state.is_open);
-      $timerSpinnerText.toggleClass('hidden', !state.is_open);
-      $numStudents.toggleClass('hidden', !state.is_open);
 
       // using chartIndex 0 since this message should only get shown if there is only one chart visible
       if (state.runs.length > 0 && state.is_open) {
         var numStudentsMessage = makeNumStudentsMessage(getSelectedRun(0));
         $numStudents.text(numStudentsMessage);
       }
-    }
+      $numStudents.toggleClass('hidden', !state.is_open);
 
-    /**
-     * Update the timer every second
-     */
-    function updateTimer() {
-      if (state.is_open) {
-        setTimeout(updateTimer, TIMER_MILLIS);
-      }
-      renderControls();
+      var uiState = UiStates[state.ui];
+      $problemButton
+        .text(uiState.buttonText || "")
+        .toggleClass('hidden', !uiState.buttonVis || false)
+        .toggleClass('disabled', !uiState.buttonEnabled || false);
+      $problemStatusSpinner.toggleClass('hidden', !uiState.spinnerVis || false);
+      $problemStatusText
+        .text(uiState.problemStatusText || "")
+        .toggleClass('hidden', _.isUndefined(uiState.problemStatusText));
+      $problemWarning
+        .toggleClass('hidden', _.isUndefined(uiState.problemWarningText))
+        .find(problemStatusWarningTextSel)
+        .text(uiState.problemWarningText || "");
+      $timer
+        .toggleClass('hidden', !uiState.timerVis || false)
+        .toggleClass('on', !uiState.timerEnabled || false);
     }
 
     /**
@@ -604,7 +686,15 @@
      */
     function pollForResponses() {
       if (state.is_open) {
-        setTimeout(pollForResponses, POLLING_MILLIS);
+        state.responsesPollingTimeout = setTimeout(pollForResponses, POLLING_MILLIS);
+      }
+      if (state.responsesAbortableRequest.isPending()) {
+        state.responsesRequestAttemptCount += 1;
+        if (state.responsesRequestAttemptCount === RESPONSES_ATTEMPTS_BEFORE_WARN) {
+          state.ui = "openDelayed";
+          renderControls();
+        }
+        return;
       }
       fetchResponsesAndRender();
     }
@@ -613,19 +703,103 @@
      * Read from the responses API and put the new value in the rendering state.
      */
     function fetchResponsesAndRender() {
-      // make sure this updates at least once a second
-      if (state.isFetchingResponses) {
-        // API call is still in progress
-        return;
-      }
-
-      state.isFetchingResponses = true;
-      $.get(responsesUrl).then(function(newState) {
+      state.responsesAbortableRequest = makeAbortableRequest(responsesUrl);
+      state.responsesAbortableRequest.promise.then(function(newState) {
         _.assign(state, newState, {
-          isFetchingResponses: false,
           lastFetch: moment()
         });
-        render();
+        state.ui = state.is_open ? "open" : "closed";
+        renderAll();
+      }).fail(function(errorTextStatus) {
+        if (errorTextStatus === "timeout") {
+          state.ui = "openTimedOut";
+          renderControls();
+        }
+      }).always(function () {
+        state.responsesRequestAttemptCount = 0;
+      });
+    }
+
+    function startTimer(startingMsElapsed) {
+      var start;
+      var startingSeconds = startingMsElapsed ? Math.floor(startingMsElapsed / 1000) : 0;
+      var $timer = $element.find(timerSel);
+      $timer.text(formatTime(startingSeconds));
+      start = Date.now();
+      startingMsElapsed = startingMsElapsed || 0;
+      state.timerInterval = setInterval(function() {
+        var deltaMillis = Date.now() - start + startingMsElapsed; // milliseconds elapsed since start
+        var deltaSeconds = Math.floor(deltaMillis / 1000);
+        $timer.text(formatTime(deltaSeconds));
+      }, TIMER_MILLIS);
+    }
+
+    function resetTimer() {
+      var $timer = $element.find(timerSel);
+      $timer.text(formatTime(0));
+      if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+      }
+    }
+
+    function handleProblemStatusClick(e) {
+      if (state.is_open) {
+        state.ui = "closing";
+        resetTimer();
+      } else {
+        state.ui = "opening";
+      }
+      renderAll();
+
+      // Clear any in-progress request to the responses endpoint, and the timeout for polling that endpoint.
+      if (state.responsesPollingTimeout) {
+        clearTimeout(state.responsesPollingTimeout);
+      }
+      if (state.responsesAbortableRequest.isPending()) {
+        state.responsesAbortableRequest.abort();
+      }
+
+      // Make the request to toggle the problem status
+      var changeStatusAbortableRequest = makeAbortableRequest(toggleStatusUrl);
+      changeStatusAbortableRequest.promise.then(function(newState) {
+        // Selected runs should be reset when the open status is changed
+        _.assign(state, newState, {
+          selectedRuns: [null]
+        });
+
+        if (state.is_open) {
+          state.ui = "open";
+          renderAll();
+          startTimer();
+          pollForResponses();
+        }
+      });
+
+      // If the problem is successfully toggled and the problem was closed, make one final request
+      // to the responses endpoint for updated responses to the problem.
+      var finalResponsesRequestPromise = changeStatusAbortableRequest.promise.then(function () {
+        if (state.is_open) { return true; }
+        state.ui = "fetchingFinal";
+        renderControls();
+        state.responsesAbortableRequest = makeAbortableRequest(responsesUrl);
+        return state.responsesAbortableRequest.promise;
+      });
+
+      // Show a failure message if either the problem status toggle request fails or the final
+      // request for problem responses fails.
+      finalResponsesRequestPromise.then(function (newState) {
+        if (!state.is_open) {
+          _.assign(state, newState, {
+            lastFetch: moment()
+          });
+          state.ui = "closed";
+          renderAll();
+        }
+      }).fail(function(errorTextStatus) {
+        if (errorTextStatus === "timeout") {
+          state.ui = "closingTimedOut";
+          renderControls();
+        }
       });
     }
 
@@ -639,41 +813,7 @@
         $("body").prepend($tooltipContainer);
       }
 
-      var block = $element.find(rapidTopLevelSel);
-      state.is_open = block.attr('data-open') === 'True';
-
-      var $rapidBlockContent = $element.find(rapidBlockControlsSel);
-
-      var linkIsDisabled = false;
-
-      $rapidBlockContent.find(problemStatusBtnSel).click(function() {
-        if (linkIsDisabled) {
-          return;
-        }
-
-        // disable the button temporarily to prevent double clicks
-        linkIsDisabled = true;
-        $rapidBlockContent.find(problemStatusBtnSel).toggleClass("disabled", true);
-        $.post(toggleStatusUrl).then(
-          function(newState) {
-            linkIsDisabled = false;
-            $rapidBlockContent.find(problemStatusBtnSel).toggleClass("disabled", false);
-
-            // Selected runs should be reset when the open status is changed
-            _.assign(state, newState, {
-              selectedRuns: [null]
-            });
-
-            renderControls();
-            if (state.is_open) {
-              pollForResponses();
-              updateTimer();
-            } else {
-              fetchResponsesAndRender();
-            }
-          }
-        );
-      });
+      $element.find(problemStatusBtnSel).click(handleProblemStatusClick);
 
       // This contains the staff-only buttons
       var $wrapInstructorInfo = $element.parent().find(".wrap-instructor-info");
@@ -682,18 +822,42 @@
         $wrapInstructorInfo.append($("<br />"));
       }
 
+      // Render an initial view before making the first request for problem responses & current state
+      state.ui = "initial";
       renderControls();
-      fetchResponsesAndRender();
+
+      state.responsesAbortableRequest = makeAbortableRequest(
+        responsesUrl,
+        {timeout: INIT_REQUEST_TIMEOUT_MILLIS}
+      );
+      state.responsesAbortableRequest.promise.then(function(newState) {
+        _.assign(state, newState, {
+          lastFetch: moment(),
+          responsesRequestAttemptCount: 0
+        });
+
+        state.ui = state.is_open ? "open" : "closed";
+        renderAll();
+        if (state.is_open) {
+          var millisSinceOpen = state.runs && state.runs.length === 0
+            ? 0
+            : moment().diff(state.lastFetch) + moment(state.server_now).diff(moment(state.runs[0].created));
+          startTimer(millisSinceOpen);
+          pollForResponses();
+        } else {
+          resetTimer()
+        }
+      }).fail(function (errorTextStatus) {
+        if (errorTextStatus === "timeout") {
+          state.ui = "loadingTimedOut";
+          renderControls();
+        }
+      });
 
       // adjust graph for each rerender
       window.addEventListener('resize', function() {
-        render();
+        renderAll();
       });
-
-      if (state.is_open) {
-        pollForResponses();
-        updateTimer();
-      }
     });
   }
 
