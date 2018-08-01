@@ -28,6 +28,7 @@
   ];
   // this sentinel value means no data should be shown
   var NONE_SELECTION = 'None';
+  var GENERAL_ERROR_MESSAGE = 'There was an error. Please reload the page or try again later.';
 
   // An object that maps UI state names to the UI artifacts that should be shown when the UI is in
   // that state.
@@ -102,6 +103,7 @@
     var problemStatusWarningTextSel = '.warning-text';
     var numStudentsSel = '.num-students';
     var tooltipContainerSel = '.rapid-response-tooltip-container';
+    var errorOverlaySel = '.rapid-response-error-overlay';
 
     var tooltipTemplate = _.template(
       '<div class="rapid-response-tooltip">' +
@@ -177,6 +179,22 @@
         deferred.reject();
       };
       return {promise: promise, abort: abort, isPending: isPending}
+    }
+
+    /**
+     * Returns a function that handles an error from an HTTP request promise.
+     * @param {string} timeoutUiState The string representing the UI state to use if the error is a timeout.
+     * @returns {Function} Error handling function
+     */
+    function generateErrorHandler(timeoutUiState) {
+      return function(errorTextStatus) {
+        if (errorTextStatus === "timeout") {
+          state.ui = timeoutUiState;
+          renderControls();
+        } else {
+          renderErrorOverlay();
+        }
+      }
     }
 
     /**
@@ -439,6 +457,12 @@
     function renderAll() {
       renderControls();
       renderChartContainer();
+    }
+
+    function renderErrorOverlay() {
+      $element.find(errorOverlaySel)
+        .toggleClass('hidden', false)
+        .text(GENERAL_ERROR_MESSAGE)
     }
 
     /**
@@ -710,12 +734,9 @@
         });
         state.ui = state.is_open ? "open" : "closed";
         renderAll();
-      }).fail(function(errorTextStatus) {
-        if (errorTextStatus === "timeout") {
-          state.ui = "openTimedOut";
-          renderControls();
-        }
-      }).always(function () {
+      }).fail(
+        generateErrorHandler("openTimedOut")
+      ).always(function () {
         state.responsesRequestAttemptCount = 0;
       });
     }
@@ -795,12 +816,7 @@
           state.ui = "closed";
           renderAll();
         }
-      }).fail(function(errorTextStatus) {
-        if (errorTextStatus === "timeout") {
-          state.ui = "closingTimedOut";
-          renderControls();
-        }
-      });
+      }).fail(generateErrorHandler("closingTimedOut"));
     }
 
     $(function($) { // onLoad
@@ -847,12 +863,7 @@
         } else {
           resetTimer()
         }
-      }).fail(function (errorTextStatus) {
-        if (errorTextStatus === "timeout") {
-          state.ui = "loadingTimedOut";
-          renderControls();
-        }
-      });
+      }).fail(generateErrorHandler("loadingTimedOut"));
 
       // adjust graph for each rerender
       window.addEventListener('resize', function() {
