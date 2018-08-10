@@ -44,6 +44,7 @@
       buttonVis: true,
       buttonEnabled: true,
       timerVis: true,
+      timerEnabled: true,
       spinnerVis: true,
       problemStatusText: "Problem is Open"
     },
@@ -60,23 +61,30 @@
       buttonVis: true,
       buttonEnabled: false,
       timerVis: true,
-      timerEnabled: true,
+      timerEnabled: false,
       spinnerVis: true,
       problemStatusText: "Problem is closing..."
+    },
+    unknownError: {
+      buttonVis: false,
+      buttonEnabled: false,
+      timerVis: false,
+      spinnerVis: false,
+      problemWarningText: GENERAL_ERROR_MESSAGE
     }
   };
   UiStates.opening = _.assign({}, UiStates.closing, {
     buttonText: "Open problem now",
     problemStatusText: "Opening problem for responses..."
   });
-  UiStates.fetchingFinal = _.assign({}, UiStates.closing, {
-    problemStatusText: "Retrieving latest responses..."
-  });
   UiStates.openDelayed = _.assign({}, UiStates.open, {
     problemWarningText: "The server is taking a while to respond..."
   });
   UiStates.openTimedOut = _.assign({}, UiStates.open, {
     problemWarningText: "The server took too long to respond. Aborting the request and trying again..."
+  });
+  UiStates.fetchingFinal = _.assign({}, UiStates.closing, {
+    problemStatusText: "Retrieving latest responses..."
   });
   UiStates.closingTimedOut = _.assign({}, UiStates.closing, {
     spinnerVis: false,
@@ -85,8 +93,9 @@
   });
   UiStates.loadingTimedOut = _.assign({}, UiStates.closingTimedOut, {
     buttonVis: false,
-    timerVis: false,
+    timerVis: false
   });
+
 
   function RapidResponseAsideView(runtime, element) {
     var toggleStatusUrl = runtime.handlerUrl(element, 'toggle_block_open_status');
@@ -179,22 +188,6 @@
         deferred.reject();
       };
       return {promise: promise, abort: abort, isPending: isPending}
-    }
-
-    /**
-     * Returns a function that handles an error from an HTTP request promise.
-     * @param {string} timeoutUiState The string representing the UI state to use if the error is a timeout.
-     * @returns {Function} Error handling function
-     */
-    function generateErrorHandler(timeoutUiState) {
-      return function(errorTextStatus) {
-        if (errorTextStatus === "timeout") {
-          state.ui = timeoutUiState;
-          renderControls();
-        } else {
-          renderErrorOverlay();
-        }
-      }
     }
 
     /**
@@ -459,12 +452,6 @@
       renderChartContainer();
     }
 
-    function renderErrorOverlay() {
-      $element.find(errorOverlaySel)
-        .toggleClass('hidden', false)
-        .text(GENERAL_ERROR_MESSAGE)
-    }
-
     /**
      * Render the chart in the container.
      *
@@ -690,9 +677,9 @@
       var uiState = UiStates[state.ui];
       $problemButton
         .text(uiState.buttonText || "")
-        .toggleClass('hidden', !uiState.buttonVis || false)
-        .toggleClass('disabled', !uiState.buttonEnabled || false);
-      $problemStatusSpinner.toggleClass('hidden', !uiState.spinnerVis || false);
+        .toggleClass('hidden', uiState.buttonVis === false)
+        .toggleClass('disabled', uiState.buttonEnabled === false);
+      $problemStatusSpinner.toggleClass('hidden', uiState.spinnerVis === false);
       $problemStatusText
         .text(uiState.problemStatusText || "")
         .toggleClass('hidden', _.isUndefined(uiState.problemStatusText));
@@ -702,7 +689,31 @@
         .text(uiState.problemWarningText || "");
       $timer
         .toggleClass('hidden', !uiState.timerVis || false)
-        .toggleClass('on', !uiState.timerEnabled || false);
+        .toggleClass('on', uiState.timerEnabled !== false);
+    }
+
+    /**
+     * Returns a function that handles an error from an HTTP request promise.
+     * @param {string} timeoutUiState The string representing the UI state to use if the error is a timeout.
+     * @returns {Function} Error handling function
+     */
+    function generateErrorHandler(timeoutUiState) {
+      return function(errorTextStatus) {
+        // Don't do anything if the error text is 'abort' - that indicates that the request
+        // was intentionally aborted.
+        if (errorTextStatus === "abort") {
+          return;
+        }
+        if (errorTextStatus === "timeout") {
+          state.ui = timeoutUiState;
+        } else {
+          state.ui = "unknownError";
+          if (state.responsesPollingTimeout) {
+            clearTimeout(state.responsesPollingTimeout);
+          }
+        }
+        renderControls();
+      }
     }
 
     /**
@@ -755,18 +766,22 @@
       }, TIMER_MILLIS);
     }
 
-    function resetTimer() {
-      var $timer = $element.find(timerSel);
-      $timer.text(formatTime(0));
+    function stopTimerCount() {
       if (state.timerInterval) {
         clearInterval(state.timerInterval);
       }
     }
 
+    function resetTimer() {
+      var $timer = $element.find(timerSel);
+      stopTimerCount();
+      $timer.text(formatTime(0));
+    }
+
     function handleProblemStatusClick(e) {
       if (state.is_open) {
         state.ui = "closing";
-        resetTimer();
+        stopTimerCount();
       } else {
         state.ui = "opening";
       }
@@ -814,6 +829,7 @@
             lastFetch: moment()
           });
           state.ui = "closed";
+          resetTimer();
           renderAll();
         }
       }).fail(generateErrorHandler("closingTimedOut"));
