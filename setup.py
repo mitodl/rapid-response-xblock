@@ -33,7 +33,6 @@ setup(
     ],
     packages=find_packages(),
     package_data=package_data("rapid_response_xblock", ["static"]),
-    include_package_data=True,
     entry_points={
         'xblock_asides.v1': [
             'rapid_response_xblock = rapid_response_xblock.block:RapidResponseAside',
