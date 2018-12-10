@@ -1,4 +1,4 @@
-(function($, _) {
+(function($, _, MathJax) {
   'use strict';
 
   // time between polls of responses API
@@ -26,6 +26,9 @@
     '#7cce40',
     '#876a16'
   ];
+  // Label SVG appearance settings
+  var LABEL_ANGLE = 30;
+  var LABEL_ROTATE_VALUE = "rotate(" + LABEL_ANGLE + ", 0, 10)";
   // this sentinel value means no data should be shown
   var NONE_SELECTION = 'None';
   var GENERAL_ERROR_MESSAGE = 'There was an error. Please reload the page or try again later.';
@@ -113,6 +116,7 @@
     var numStudentsSel = '.num-students';
     var tooltipContainerSel = '.rapid-response-tooltip-container';
     var errorOverlaySel = '.rapid-response-error-overlay';
+    var graphBarClass = 'bar';
 
     var tooltipTemplate = _.template(
       '<div class="rapid-response-tooltip">' +
@@ -234,6 +238,13 @@
       );
     }
 
+    function hasMathExpression(text) {
+      return _.some([
+        _.includes(text, "\("),
+        _.includes(text, "\)"),
+        _.includes(text, "$")
+      ]);
+    }
     /**
      * SVG doesn't have a capability to wrap text except for foreignObject which is not supported in IE11.
      * So we have to calculate it manually for X axis tick labels.
@@ -254,13 +265,12 @@
         rootText.remove();
         root.select("g").remove();
 
-        var angle = 30;
-        var radians = angle * Math.PI / 180;
+        var radians = LABEL_ANGLE * Math.PI / 180;
         // yay trig
         // this value is the maximum length for the text when laid out at an angle
         // hypotenuse is divided in half since text is starting in center
         var maxTextWidth = (barWidth / Math.cos(radians)) / 2;
-        var rootContainer = root.append("g").attr("transform", "rotate(" + angle + ", 0, 10)");
+        var rootContainer = root.append("g").attr("transform", LABEL_ROTATE_VALUE);
         rootText = rootContainer.append("text")
           .attr("fill", "#000")
           .attr("text-anchor", "start")
@@ -269,6 +279,24 @@
 
         var words = text.split(/\s+/);
         var tspan = rootText.append("tspan").attr("x", 0).attr("y", rootY).attr("dy", rootDy + "em");
+
+        if (hasMathExpression(text)) {
+          var textTrimmed = text.trim();
+          /*
+          if text has math expression as well as text data i.e (a) {math expression}, (b) ..
+          then break text into math expression and english to print data in two lines.
+          **/
+          var middle =  " ";
+          if (_.includes(text, "\(")) {
+            middle = "\\(";
+          } else if (_.includes(text, "$")) {
+            middle = "$";
+          }
+          words = [
+            textTrimmed.slice(0, textTrimmed.indexOf(middle)).trim(),
+            textTrimmed.slice(textTrimmed.indexOf(middle), textTrimmed.length).trim()
+          ];
+        }
 
         var currentLine = 0;
         var lineHeight = 1.1;
@@ -283,7 +311,7 @@
 
           var compiledText = tspan.text();
           tspan.text(compiledText + " " + word);
-          if (tspan.node().getComputedTextLength() > maxTextWidth) {
+          if (tspan.node().getComputedTextLength() > maxTextWidth || hasMathExpression(text)) {
             // Check if the new word would go beyond the bar width boundary.
 
             // If this is the first word on the line we don't have a choice but to render it
@@ -442,6 +470,32 @@
       containers.exit().remove();
     }
 
+    function renderMathHJax(chart) {
+      MathJax.Hub.Register.StartupHook("End", function() {
+        setTimeout(function() {
+          chart.select(".xaxis").selectAll(".tick").each(function() {
+            var tick = d3.select(this);
+            var g = tick.select(".MathJax_SVG").select("svg");
+            if (!g.empty()) {
+              var node = g.node();
+              g.remove();
+              var newG = tick.append("g").attr("transform", LABEL_ROTATE_VALUE);
+              newG.append(function () {
+                var selectedNode = d3.select(node)
+                  .attr("width", "18.778ex")
+                  .attr("height", "3.161ex")
+                  .attr("x", 25)
+                  .attr("y", 9)
+                  .attr("dy", "50em");
+                return selectedNode.node();
+              });
+            }
+          });
+        }, 1);
+      });
+      MathJax.Hub.Queue(["Typeset", MathJax.Hub, chart.node()]);
+    }
+
     //---------------------
 
     /**
@@ -536,7 +590,7 @@
       // (there is a __data__ attribute on each rect keeping track of this). Also tell D3 to use the answer_id to make
       // this match.
       var chart = container.select(".chart");
-      var bars = chart.selectAll("rect").data(histogram, function(item) {
+      var bars = chart.selectAll("rect." + graphBarClass).data(histogram, function(item) {
         return item.answer_id;
       });
 
@@ -544,7 +598,8 @@
       // for the y axis for existing bars being updated.
       bars.enter()
         // Everything in between enter() and merge(bars) applies only to new bars. This creates a new rect.
-        .append("rect").attr("class", "bar")
+        .append("rect")
+        .attr("class", "bar")
         // Set the height and y values according to the scale. This prevents weird transition behavior
         // where new bars appear to zap in out of nowhere.
         .attr("x", function(item) { return x(item.answer_id); })
@@ -566,6 +621,9 @@
             percent: percent
           };
           $tooltipContainer.html(tooltipTemplate(templateState));
+          if (hasMathExpression(item.answer_text)) {
+            MathJax.Hub.Queue(["Typeset", MathJax.Hub, $tooltipContainer.el]);
+          }
         })
         .on("mousemove", function() {
           $tooltipContainer.css("left", (d3.event.pageX + 20) + "px")
@@ -585,7 +643,7 @@
         .attr("y", function(item) { return y(item.count); })
         .attr("height", function(item) {
           return innerHeight - y(item.count);
-        });
+        })
 
       // If the responses disappear from the API such that there is no information for the bar
       // (probably shouldn't happen),
@@ -646,6 +704,8 @@
       chart.select(".yaxis .line")
         .transition()
         .attr("y2", innerHeight);
+
+      renderMathHJax(chart);
     }
 
     /**
@@ -836,7 +896,15 @@
     }
 
     $(function($) { // onLoad
-      // there can be only one
+      // Configure MathJax settings for any problems with math notation
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+          processEscapes: true
+        }
+      });
+
+      // There can be only one tooltip container
       $tooltipContainer = $(tooltipContainerSel);
       if ($tooltipContainer.length === 0) {
         $tooltipContainer = $(
@@ -893,4 +961,4 @@
   }
 
   window.RapidResponseAsideInit = initializeRapidResponseAside;
-}($, _));
+}($, _, MathJax));
