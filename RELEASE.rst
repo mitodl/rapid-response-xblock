@@ -1,6 +1,12 @@
 Release Notes
 =============
 
+Version 0.0.5
+-------------
+
+- Applied MathJax to graph and tooltip, and fixed int test script
+- util methods added in xblock to serve instructor dashboard
+
 Version 0.0.2
 -------------
 
