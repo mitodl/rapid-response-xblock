@@ -1,13 +1,13 @@
 Release Notes
 =============
 
-Version 0.0.5
+Version 0.0.5 (Released December 11, 2018)
 -------------
 
 - Applied MathJax to graph and tooltip, and fixed int test script
 - util methods added in xblock to serve instructor dashboard
 
-Version 0.0.2
+Version 0.0.2 (Released May 01, 2018)
 -------------
 
 - Link y domains together, use the greatest max value (#60)
