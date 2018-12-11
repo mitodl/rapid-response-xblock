@@ -13,6 +13,7 @@ from rapid_response_xblock.block import (
     RapidResponseAside,
     BLOCK_PROBLEM_CATEGORY,
     MULTIPLE_CHOICE_TYPE,
+    CHECKBOX_TYPE,
 )
 from rapid_response_xblock.models import (
     RapidResponseRun,
@@ -72,7 +73,9 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
 
     @data(*[
         [BLOCK_PROBLEM_CATEGORY, {MULTIPLE_CHOICE_TYPE}, None, True],
+        [BLOCK_PROBLEM_CATEGORY, {CHECKBOX_TYPE}, None, True],
         [BLOCK_PROBLEM_CATEGORY, None, Mock(problem_types={MULTIPLE_CHOICE_TYPE}), True],
+        [BLOCK_PROBLEM_CATEGORY, None, Mock(problem_types={CHECKBOX_TYPE}), True],
         [None, {MULTIPLE_CHOICE_TYPE}, None, False],
         ['invalid_category', {MULTIPLE_CHOICE_TYPE}, None, False],
         [BLOCK_PROBLEM_CATEGORY, {'invalid_problem_type'}, None, False],

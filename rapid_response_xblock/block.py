@@ -64,6 +64,8 @@ def staff_only(handler_method):
 
 BLOCK_PROBLEM_CATEGORY = u'problem'
 MULTIPLE_CHOICE_TYPE = 'multiplechoiceresponse'
+CHECKBOX_TYPE = 'choiceresponse'
+ALLOWED_PROBLEM_TYPES = [MULTIPLE_CHOICE_TYPE, CHECKBOX_TYPE]
 
 
 class RapidResponseAside(XBlockAside):
@@ -205,8 +207,9 @@ class RapidResponseAside(XBlockAside):
         elif hasattr(block, 'problem_types'):
             block_problem_types = block.problem_types
         # We only want this aside to apply to the block if the problem is multiple choice
-        # AND there are not multiple problem types.
-        return block_problem_types == {MULTIPLE_CHOICE_TYPE}
+        # or checkbox problem AND there are not multiple problem types.
+
+        return block_problem_types.issubset(ALLOWED_PROBLEM_TYPES)
 
     @property
     def wrapped_block_usage_key(self):

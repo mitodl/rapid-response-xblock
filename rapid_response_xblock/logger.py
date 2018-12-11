@@ -14,8 +14,7 @@ from rapid_response_xblock.models import (
     RapidResponseRun,
     RapidResponseSubmission,
 )
-from rapid_response_xblock.block import MULTIPLE_CHOICE_TYPE
-
+from rapid_response_xblock.block import ALLOWED_PROBLEM_TYPES
 
 log = logging.getLogger(__name__)
 SubmissionEvent = namedtuple(
@@ -55,7 +54,7 @@ class SubmissionRecorder(BaseBackend):
             return None
         submission_key, submission = event_submissions.items()[0]
         # Ignore if the problem being answered has a blank submission or is not multiple choice
-        if not submission or submission.get('response_type') != MULTIPLE_CHOICE_TYPE:
+        if not submission or submission.get('response_type') not in ALLOWED_PROBLEM_TYPES:
             return None
 
         try:
