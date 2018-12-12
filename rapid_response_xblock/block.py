@@ -246,7 +246,14 @@ class RapidResponseAside(XBlockAside):
         """
         problem = modulestore().get_item(self.wrapped_block_usage_key)
         tree = problem.lcp.tree
-        choice_elements = tree.xpath('//choicegroup/choice')
+
+        choice_elements = []
+
+        if problem.problem_types == {MULTIPLE_CHOICE_TYPE}:
+            choice_elements = tree.xpath('//choicegroup/choice')
+        elif problem.problem_types == {CHECKBOX_TYPE}:
+            choice_elements = tree.xpath('//checkboxgroup/choice')
+
         return [
             {
                 'answer_id': choice.get('name'),
