@@ -283,7 +283,8 @@ class RapidResponseAside(XBlockAside):
             } for run in runs
         ]
 
-    def get_counts_for_problem(self, run_ids, choices, problem_types):
+    @staticmethod
+    def get_counts_for_problem(run_ids, choices, problem_types):
         """
         Produce histogram count data for a given problem
 
@@ -305,7 +306,7 @@ class RapidResponseAside(XBlockAside):
             response_counts = {(item['answer_id'], item['run']): item['count'] for item in response_data}
 
         elif problem_types == {CHECKBOX_TYPE}:
-            response_counts = self.get_response_count_for_check_box_problem(response_data)
+            response_counts = RapidResponseAside.get_response_count_for_check_box_problem(response_data)
 
         return {
             choice['answer_id']: {
@@ -314,7 +315,8 @@ class RapidResponseAside(XBlockAside):
             } for choice in choices
         }
 
-    def get_response_count_for_check_box_problem(self, response_data):
+    @staticmethod
+    def get_response_count_for_check_box_problem(response_data):
         """ Parse response count for checkbox type problems."""
         response_counts = {}
         for item in response_data:
