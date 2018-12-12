@@ -159,6 +159,8 @@ class RapidResponseAside(XBlockAside):
         """
         Returns student responses for rapid-response-enabled block
         """
+        problem = modulestore().get_item(self.wrapped_block_usage_key)
+
         run_querysets = RapidResponseRun.objects.filter(
             problem_usage_key=self.wrapped_block_usage_key,
             course_key=self.course_key,
@@ -171,6 +173,7 @@ class RapidResponseAside(XBlockAside):
         counts = self.get_counts_for_problem(
             [run['id'] for run in runs],
             choices,
+            problem.problem_types,
         )
 
         total_counts = {
@@ -280,14 +283,14 @@ class RapidResponseAside(XBlockAside):
             } for run in runs
         ]
 
-    @staticmethod
-    def get_counts_for_problem(run_ids, choices):
+    def get_counts_for_problem(self, run_ids, choices, problem_types):
         """
         Produce histogram count data for a given problem
 
         Args:
             run_ids (list of int): Serialized run id for the problem
             choices (list of dict): Serialized choices
+            problem_types (set): type of problem
 
         Returns:
             dict:
@@ -297,7 +300,12 @@ class RapidResponseAside(XBlockAside):
             run__id__in=run_ids
         ).values('answer_id', 'run').annotate(count=Count('answer_id'))
         # Make sure every answer has a count and convert to JSON serializable format
-        response_counts = {(item['answer_id'], item['run']): item['count'] for item in response_data}
+
+        if problem_types == {MULTIPLE_CHOICE_TYPE}:
+            response_counts = {(item['answer_id'], item['run']): item['count'] for item in response_data}
+
+        elif problem_types == {CHECKBOX_TYPE}:
+            response_counts = self.get_response_count_for_check_box_problem(response_data)
 
         return {
             choice['answer_id']: {
@@ -305,3 +313,19 @@ class RapidResponseAside(XBlockAside):
                 for run_id in run_ids
             } for choice in choices
         }
+
+    def get_response_count_for_check_box_problem(self, response_data):
+        """ Parse response count for checkbox type problems."""
+        response_counts = {}
+        for item in response_data:
+            for ans in eval(item['answer_id']):
+
+                key = (ans, item['run'])
+                count = item['count']
+
+                if key in response_counts.keys():
+                    response_counts[key] = response_counts[key] + count
+                else:
+                    response_counts[key] = count
+
+        return response_counts
