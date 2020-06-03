@@ -1,7 +1,6 @@
 """
 Capture events
 """
-from __future__ import absolute_import
 import logging
 from collections import namedtuple
 
@@ -53,7 +52,7 @@ class SubmissionRecorder(BaseBackend):
         event_submissions = event['event']['submission']
         if len(event_submissions) > 1:
             return None
-        submission_key, submission = event_submissions.items()[0]
+        submission_key, submission = list(event_submissions.items())[0]
         # Ignore if the problem being answered has a blank submission or is not multiple choice
         if not submission or submission.get('response_type') != MULTIPLE_CHOICE_TYPE:
             return None

@@ -72,9 +72,9 @@ class TestEvents(RuntimeEnabledTestCase):
         request.META['SERVER_PORT'] = 1234
         return load_single_xblock(
             request=request,
-            course_id=unicode(self.course_id),
+            course_id=str(self.course_id),
             user_id=self.instructor.id,
-            usage_key_string=unicode(problem.location)
+            usage_key_string=str(problem.location)
         )
 
     def test_publish(self):
@@ -209,7 +209,7 @@ class TestEvents(RuntimeEnabledTestCase):
         If there is more than one submission in the event,
         no event should be recorded
         """
-        submission = self.example_event['event']['submission'].values()[0]
+        submission = list(self.example_event['event']['submission'].values())[0]
         self.example_event['event']['submission']['new_key'] = submission
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
@@ -220,7 +220,7 @@ class TestEvents(RuntimeEnabledTestCase):
         If there is no submission or an empty submission in the event,
         no event should be recorded
         """
-        key = self.example_event['event']['submission'].keys()[0]
+        key = list(self.example_event['event']['submission'].keys())[0]
         self.example_event['event']['submission'][key] = submission_value
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()

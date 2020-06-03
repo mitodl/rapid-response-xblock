@@ -21,4 +21,4 @@ def get_run_submission_data(run_id):
 
 def get_answer_result(event):
     # TODO find better way if we can
-    return event['event']['submission'].values()[0]['correct']
+    return list(event['event']['submission'].values())[0]['correct']

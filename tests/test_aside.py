@@ -271,8 +271,8 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         assert resp.json['choices'] == choices
         assert resp.json['runs'] == RapidResponseAside.serialize_runs(run_queryset)
         counts_with_str_keys = {
-            answer_id: {str(run_id): count for run_id, count in runs.items()}
-            for answer_id, runs in counts.items()
+            answer_id: {str(run_id): count for run_id, count in list(runs.items())}
+            for answer_id, runs in list(counts.items())
         }
         assert resp.json['counts'] == counts_with_str_keys
         assert resp.json['total_counts'] == expected_total_counts
@@ -318,15 +318,15 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             {'answer_id': 'choice_2', 'answer_text': 'a different incorrect answer'},
         ]
         choices_lookup = {choice['answer_id']: choice['answer_text'] for choice in choices}
-        counts = zip(
+        counts = list(zip(
             [choices[i]['answer_id'] for i in range(3)],
-            range(2, 5),
+            list(range(2, 5)),
             [run1.id for _ in range(3)],
-        ) + zip(
+        )) + list(zip(
             [choices[i]['answer_id'] for i in range(3)],
             [3, 0, 7],
             [run2.id for _ in range(3)],
-        )
+        ))
 
         counts_dict = defaultdict(dict)
         for answer_id, num_submissions, run_id in counts:

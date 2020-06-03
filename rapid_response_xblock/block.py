@@ -62,7 +62,7 @@ def staff_only(handler_method):
     return wrapper
 
 
-BLOCK_PROBLEM_CATEGORY = u'problem'
+BLOCK_PROBLEM_CATEGORY = 'problem'
 MULTIPLE_CHOICE_TYPE = 'multiplechoiceresponse'
 
 
@@ -82,7 +82,7 @@ class RapidResponseAside(XBlockAside):
         """
         Renders the aside contents for the student view
         """
-        fragment = Fragment(u'')
+        fragment = Fragment('')
         if not self.is_staff() or not self.enabled:
             return fragment
         fragment.add_content(
@@ -104,7 +104,7 @@ class RapidResponseAside(XBlockAside):
         """
         Renders the aside contents for the studio view
         """
-        fragment = Fragment(u'')
+        fragment = Fragment('')
         fragment.add_content(
             render_template(
                 "static/html/rapid_studio.html",
