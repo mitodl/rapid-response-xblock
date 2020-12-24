@@ -7,7 +7,7 @@ from collections import namedtuple
 from django.db import transaction
 from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import CourseLocator
-from track.backends import BaseBackend
+from common.djangoapps.track.backends import BaseBackend
 
 from rapid_response_xblock.models import (
     RapidResponseRun,
@@ -46,12 +46,17 @@ class SubmissionRecorder(BaseBackend):
              SubmissionEvent: The parsed submission event data (or None)
         """
         # Ignore if this event was not the submission of an answer
-        if event['event_type'] != 'problem_check':
+        if event.get('name') != 'problem_check':
             return None
         # Ignore if there were multiple submissions represented in this single event
-        event_submissions = event['event']['submission']
+        event_data = event.get('data')
+        if not event_data or not isinstance(event_data, dict):
+            return None
+
+        event_submissions = event_data.get('submission')
         if len(event_submissions) > 1:
             return None
+
         submission_key, submission = list(event_submissions.items())[0]
         # Ignore if the problem being answered has a blank submission or is not multiple choice
         if not submission or submission.get('response_type') != MULTIPLE_CHOICE_TYPE:
@@ -62,13 +67,13 @@ class SubmissionRecorder(BaseBackend):
                 raw_data=event,
                 user_id=event['context']['user_id'],
                 problem_usage_key=UsageKey.from_string(
-                    event['event']['problem_id']
+                    event_data['problem_id']
                 ),
                 course_key=CourseLocator.from_string(
                     event['context']['course_id']
                 ),
                 answer_text=submission['answer'],
-                answer_id=event['event']['answers'][submission_key]
+                answer_id=event_data['answers'][submission_key]
             )
         except:  # pylint: disable=bare-except
             log.exception("Unable to parse event data as a submission: %s", event)

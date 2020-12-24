@@ -7,21 +7,21 @@ from mock import Mock, patch, PropertyMock
 from dateutil.parser import parse as parse_datetime
 import pytz
 from opaque_keys.edx.keys import UsageKey
-from student.tests.factories import UserFactory
 
-from rapid_response_xblock.block import (
-    RapidResponseAside,
-    BLOCK_PROBLEM_CATEGORY,
-    MULTIPLE_CHOICE_TYPE,
+from tests.utils import (
+    make_scope_ids,
+    RuntimeEnabledTestCase,
 )
 from rapid_response_xblock.models import (
     RapidResponseRun,
     RapidResponseSubmission,
 )
-from tests.utils import (
-    make_scope_ids,
-    RuntimeEnabledTestCase,
+from rapid_response_xblock.block import (
+    RapidResponseAside,
+    BLOCK_PROBLEM_CATEGORY,
+    MULTIPLE_CHOICE_TYPE,
 )
+from common.djangoapps.student.tests.factories import UserFactory
 
 
 @ddt

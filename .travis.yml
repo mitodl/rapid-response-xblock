@@ -1,13 +1,15 @@
 language: python
+python:
+  - 3.8.5
 install:
   - git clone https://github.com/edx/devstack.git
   # Travis's version of docker-compose doesn't understand :cached, and it's not required anyway, so this removes it
   - (cd devstack; sed -i 's/:cached//g' ./docker-compose-host.yml)
-  - (cd devstack; make dev.clone)
+  - (cd devstack; make dev.clone.https)
   - (cd edx-platform;
       git remote add mitodl https://github.com/mitodl/edx-platform.git;
       git fetch mitodl;
-      git checkout mitodl/master
+      git checkout mitodl/mitx/koa
     )
 script: >
   cd devstack;
