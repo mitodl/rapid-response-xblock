@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Version 0.0.8
+-------------
+
+- edX Koa release compatibility
+
 Version 0.0.5 (Released December 11, 2018)
 -------------
 
