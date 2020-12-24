@@ -7,17 +7,18 @@ from mock import Mock, patch
 
 from django.http.request import HttpRequest
 
-from courseware.module_render import (
+from xblock.fields import ScopeIds
+from lms.djangoapps.courseware.module_render import (
     get_module_system_for_user,
     make_track_function,
 )
-from courseware.tests.factories import StaffFactory
-from student.tests.factories import AdminFactory
-from xblock.fields import ScopeIds
+from lms.djangoapps.courseware.tests.factories import StaffFactory
+from common.djangoapps.student.tests.factories import AdminFactory
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import ItemFactory
 from xmodule.modulestore.xml_importer import import_course_from_xml
+from xmodule.x_module import XModule
 
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -134,7 +135,7 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
             # Copied this from xmodule.xmodule.x_module._xmodule
             # When it executes there it raises a scope error, but here it's fine. Not sure what the difference is
             block.xmodule_runtime.xmodule_instance = block.xmodule_runtime.construct_xblock_from_class(
-                block.module_class,
+                XModule,
                 descriptor=block,
                 scope_ids=block.scope_ids,
                 field_data=block._field_data,  # pylint: disable=protected-access

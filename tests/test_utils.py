@@ -1,11 +1,11 @@
 """Tests for the util methods"""
+import pytest
 from opaque_keys.edx.keys import UsageKey
-from student.tests.factories import UserFactory
 
-
+from tests.utils import RuntimeEnabledTestCase
 from rapid_response_xblock.models import RapidResponseRun, RapidResponseSubmission
 from rapid_response_xblock.utils import get_run_data_for_course, get_run_submission_data
-from tests.utils import RuntimeEnabledTestCase
+from common.djangoapps.student.tests.factories import UserFactory
 
 
 class TestUtils(RuntimeEnabledTestCase):
@@ -19,6 +19,7 @@ class TestUtils(RuntimeEnabledTestCase):
             open=True,
         )
 
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_get_run_data_for_course(self):
         """Verify that method returns list fo dicts with required fields."""
         expected = [

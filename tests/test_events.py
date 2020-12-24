@@ -7,20 +7,18 @@ from django.http.request import HttpRequest
 
 from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import CourseLocator
-from courseware.module_render import load_single_xblock
-from xmodule.capa_module import CapaDescriptor
-from xmodule.modulestore.django import modulestore
-
-from rapid_response_xblock.logger import SubmissionRecorder
-from rapid_response_xblock.models import (
-    RapidResponseRun,
-    RapidResponseSubmission,
-)
 from tests.utils import (
     combine_dicts,
     make_scope_ids,
     RuntimeEnabledTestCase,
 )
+from rapid_response_xblock.models import (
+    RapidResponseRun,
+    RapidResponseSubmission,
+)
+from rapid_response_xblock.logger import SubmissionRecorder
+from xmodule.modulestore.django import modulestore
+from lms.djangoapps.courseware.module_render import load_single_xblock
 
 
 # pylint: disable=no-member
@@ -62,7 +60,7 @@ class TestEvents(RuntimeEnabledTestCase):
         store = modulestore()
         problem = [
             item for item in store.get_items(course.course_id)
-            if isinstance(item, CapaDescriptor)
+            if item.__class__.__name__ == 'ProblemBlockWithMixins'
         ][0]
         problem.bind_for_student(self.runtime, self.instructor)
 
@@ -82,7 +80,7 @@ class TestEvents(RuntimeEnabledTestCase):
         Make sure the Logger is installed correctly
         """
         event_type = 'event_name'
-        event_object = {'a': 'event'}
+        event_object = {'a': 'data'}
 
         # If this package is installed TRACKING_BACKENDS should
         # be configured to point to SubmissionRecorder. Since self.runtime is
@@ -98,9 +96,9 @@ class TestEvents(RuntimeEnabledTestCase):
         assert send_patch.call_count == 1
         event = send_patch.call_args[0][1]
 
-        assert event['event_type'] == 'event_name'
-        assert event['event_source'] == 'server'
-        assert event['event'] == event_object
+        assert event['name'] == 'event_name'
+        assert event['context']['event_source'] == 'server'
+        assert event['data'] == event_object
         assert event['context']['course_id'] == "{org}/{course}/{run}".format(
             org=block.location.org,
             course=block.location.course,
@@ -118,7 +116,6 @@ class TestEvents(RuntimeEnabledTestCase):
         A problem should trigger an event which is captured
         """
         problem = self.get_problem()
-
         problem.handle_ajax('problem_check', {
             "input_i4x-SGAU-SGA101-problem-"
             "2582bbb68672426297e525b49a383eb8_2_1": clicked_answer_id
@@ -164,7 +161,7 @@ class TestEvents(RuntimeEnabledTestCase):
         obj = RapidResponseSubmission.objects.first()
         assert obj.user_id == example_event_data['context']['user_id']
         assert obj.run.problem_usage_key == UsageKey.from_string(
-            example_event_data['event']['problem_id']
+            example_event_data['data']['problem_id']
         )
         assert obj.run.course_key == CourseLocator.from_string(
             example_event_data['context']['course_id']
@@ -200,7 +197,7 @@ class TestEvents(RuntimeEnabledTestCase):
         """
         If the problem id is missing no event should be recorded
         """
-        del self.example_event['event']['problem_id']
+        del self.example_event['data']['problem_id']
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
 
@@ -209,8 +206,8 @@ class TestEvents(RuntimeEnabledTestCase):
         If there is more than one submission in the event,
         no event should be recorded
         """
-        submission = list(self.example_event['event']['submission'].values())[0]
-        self.example_event['event']['submission']['new_key'] = submission
+        submission = list(self.example_event['data']['submission'].values())[0]
+        self.example_event['data']['submission']['new_key'] = submission
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
 
@@ -220,8 +217,8 @@ class TestEvents(RuntimeEnabledTestCase):
         If there is no submission or an empty submission in the event,
         no event should be recorded
         """
-        key = list(self.example_event['event']['submission'].keys())[0]
-        self.example_event['event']['submission'][key] = submission_value
+        key = list(self.example_event['data']['submission'].keys())[0]
+        self.example_event['data']['submission'][key] = submission_value
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
 
@@ -229,7 +226,7 @@ class TestEvents(RuntimeEnabledTestCase):
         """
         If the answer id key is missing no event should be recorded
         """
-        self.example_event['event']['answers'] = {}
+        self.example_event['data']['answers'] = {}
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
 
