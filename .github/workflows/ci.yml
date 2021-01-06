@@ -1,0 +1,27 @@
+name: CI
+on: [push]
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8.5"
+
+      - name: Setup edX & Run Tests
+        run: |
+          cd ..
+          git clone https://github.com/edx/devstack.git
+          cd devstack
+          sed -i 's/:cached//g' ./docker-compose-host.yml
+          make dev.clone.https
+          cd ../edx-platform
+          git remote add mitodl https://github.com/mitodl/edx-platform.git
+          git fetch mitodl
+          git checkout mitodl/mitx/koa
+          cd ../devstack
+          DEVSTACK_WORKSPACE=$PWD/.. docker-compose -f docker-compose.yml -f docker-compose-host.yml run -v $PWD/../rapid-response-xblock:/rapid-response-xblock lms /rapid-response-xblock/run_devstack_integration_tests.sh
