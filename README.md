@@ -63,6 +63,11 @@ If you're using any release before Juniper, make sure the following properties e
 
 `ADDL_INSTALLED_APPS` may include other items. The list just needs to have `rapid_response_xblock` among its values.
 
+### 3) Add database record
+
+If one doesn't already exist, create a record for the `XBlockAsidesConfig` model 
+(LMS admin URL: `/admin/lms_xblock/xblockasidesconfig/`).
+
 ## Database Migrations
 
 If your `rapid-response-xblock` repo is mounted into the devstack container, you can create migrations for any
