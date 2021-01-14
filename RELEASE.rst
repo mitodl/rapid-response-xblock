@@ -1,6 +1,15 @@
 Release Notes
 =============
 
+Version 0.0.9
+-------------
+
+- Update rapid_response_xblock/utils.py
+- Added support for updated data structure in rapid response submissions
+- Added setup step to README that was accidentally omitted
+- Updated installation & testing instructions
+- Switch from Travis to Github Actions
+
 Version 0.0.8 (Released December 24, 2020)
 -------------
 
