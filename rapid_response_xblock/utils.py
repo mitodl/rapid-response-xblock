@@ -21,8 +21,7 @@ def get_run_submission_data(run_id):
 
 def get_answer_result(event):
     # TODO find better way if we can
+    event_data = event.get('event', {}) or event.get('data', {})
     return list(
-        (event.get('event', {}).get('submission')
-         or event.get('data', {}).get('submission')
-         ).values()
+        event_data.get('submission').values()
     )[0]['correct']
