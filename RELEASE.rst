@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 0.0.9
+Version 0.0.9 (Released January 14, 2021)
 -------------
 
 - Update rapid_response_xblock/utils.py
