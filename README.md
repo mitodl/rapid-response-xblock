@@ -80,3 +80,16 @@ make dev.shell.lms
 # In bash, create the migrations via management command...
 python manage.py lms makemigrations rapid_response_xblock --settings=devstack_docker
 ```
+
+## Usage
+
+_NOTE (4/2021)_: Rapid response is **only configured to work with multiple choice problems**.
+
+Follow these steps to enable an individual problem for rapid response:
+1. Load the problem in Studio
+2. Click "Edit"
+3. In the editing UI, click "Plugins" (if this option doesn't exist, rapid response may not be properly configured)
+4. Check the box ("Enable problem for rapid-response")
+5. Save and publish
+
+When you navigate to that problem in LMS, you should now see an option for opening the problem for rapid response.
