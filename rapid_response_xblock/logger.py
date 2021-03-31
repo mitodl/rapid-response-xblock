@@ -48,13 +48,13 @@ class SubmissionRecorder(BaseBackend):
         # Ignore if this event was not the submission of an answer
         if event.get('name') != 'problem_check':
             return None
-        # Ignore if there were multiple submissions represented in this single event
+        # Ignore if there were multiple or no submissions represented in this single event
         event_data = event.get('data')
         if not event_data or not isinstance(event_data, dict):
             return None
 
         event_submissions = event_data.get('submission')
-        if len(event_submissions) > 1:
+        if len(event_submissions) != 1:
             return None
 
         submission_key, submission = list(event_submissions.items())[0]
