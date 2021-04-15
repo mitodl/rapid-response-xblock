@@ -1,6 +1,12 @@
 Release Notes
 =============
 
+Version 0.1.0
+-------------
+
+- Fixed index out of bound error in case of no submittion data (#93)
+- Updated readme to include usage details
+
 Version 0.0.9 (Released January 14, 2021)
 -------------
 
