@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 0.2.0
+Version 0.2.0 (Released April 22, 2021)
 -------------
 
 - Upgrade django with a package range (#99)
