@@ -28,7 +28,7 @@ from common.djangoapps.student.tests.factories import UserFactory
 class RapidResponseAsideTests(RuntimeEnabledTestCase):
     """Tests for RapidResponseAside logic"""
     def setUp(self):
-        super(RapidResponseAsideTests, self).setUp()
+        super().setUp()
         self.aside_usage_key = UsageKey.from_string(
             "aside-usage-v2:block-v1$:SGAU+SGA101+2017_SGA+type@problem+block"
             "@2582bbb68672426297e525b49a383eb8::rapid_response_xblock"

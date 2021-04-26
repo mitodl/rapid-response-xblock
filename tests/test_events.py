@@ -28,7 +28,7 @@ class TestEvents(RuntimeEnabledTestCase):
     """Tests for event capturing"""
 
     def setUp(self):
-        super(TestEvents, self).setUp()
+        super().setUp()
         self.scope_ids = make_scope_ids(self.runtime, self.descriptor)
 
         # For the test_data course

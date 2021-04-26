@@ -22,6 +22,6 @@ jobs:
           cd ../edx-platform
           git remote add mitodl https://github.com/mitodl/edx-platform.git
           git fetch mitodl
-          git checkout mitodl/mitx/koa
+          git checkout mitodl/mitx/lilac
           cd ../devstack
           DEVSTACK_WORKSPACE=$PWD/.. docker-compose -f docker-compose.yml -f docker-compose-host.yml run -v $PWD/../rapid-response-xblock:/rapid-response-xblock lms /rapid-response-xblock/run_devstack_integration_tests.sh
