@@ -64,7 +64,7 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
     commonly-needed objects for testing XBlocks
     """
     def setUp(self):
-        super(RuntimeEnabledTestCase, self).setUp()
+        super().setUp()
         self.track_function = make_track_function(HttpRequest())
         self.student_data = Mock()
         self.course = self.import_test_course()

@@ -12,7 +12,7 @@ class TestUtils(RuntimeEnabledTestCase):
     """Utils method tests"""
 
     def setUp(self):
-        super(TestUtils, self).setUp()
+        super().setUp()
         self.problem_run = RapidResponseRun.objects.create(
             problem_usage_key=UsageKey.from_string("i4x://SGAU/SGA101/problem/2582bbb68672426297e525b49a383eb8"),
             course_key=self.course_id,

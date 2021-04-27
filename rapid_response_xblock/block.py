@@ -118,7 +118,7 @@ class RapidResponseAside(XBlockAside):
 
     @XBlock.handler
     @staff_only
-    def toggle_block_open_status(self, request=None, suffix=None):
+    def toggle_block_open_status(self, request=None, suffix=None):  # pylint: disable=unused-argument
         """
         Toggles the open/closed status for the rapid-response-enabled block
         """
@@ -144,7 +144,7 @@ class RapidResponseAside(XBlockAside):
         )
 
     @XBlock.handler
-    def toggle_block_enabled(self, request=None, suffix=None):
+    def toggle_block_enabled(self, request=None, suffix=None):  # pylint: disable=unused-argument
         """
         Toggles the enabled status for the rapid-response-enabled block
         """
@@ -153,7 +153,7 @@ class RapidResponseAside(XBlockAside):
 
     @XBlock.handler
     @staff_only
-    def responses(self, request=None, suffix=None):
+    def responses(self, request=None, suffix=None):  # pylint: disable=unused-argument
         """
         Returns student responses for rapid-response-enabled block
         """
