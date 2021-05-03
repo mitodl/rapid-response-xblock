@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Version 0.3.0
+-------------
+
+- Lilac Compatibility: Fixing issues with tests (#101)
+
 Version 0.2.0 (Released April 22, 2021)
 -------------
 
