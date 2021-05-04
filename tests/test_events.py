@@ -222,11 +222,40 @@ class TestEvents(RuntimeEnabledTestCase):
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
 
+    def test_missing_event_data(self):
+        """
+        If the event data is missing no event should be recorded
+        """
+        self.example_event['data'] = []
+        SubmissionRecorder().send(self.example_event)
+        self.assert_unsuccessful_event_parsing()
+
     def test_missing_answer_id(self):
         """
         If the answer id key is missing no event should be recorded
         """
         self.example_event['data']['answers'] = {}
+        SubmissionRecorder().send(self.example_event)
+        self.assert_unsuccessful_event_parsing()
+
+    def test_submission_less_than_one(self):
+        """
+        If the submission data is less than 1,
+        no event should be recorded
+        """
+        key = list(self.example_event['data']['submission'].keys())[0]
+        self.example_event['data']['submission'] = {}
+        SubmissionRecorder().send(self.example_event)
+        self.assert_unsuccessful_event_parsing()
+
+    def test_submission_more_than_two(self):
+        """
+        If the submission data is more than 2,
+        no event should be recorded
+        """
+        submission = list(self.example_event['data']['submission'].values())[0]
+        self.example_event['data']['submission']['new_key_1'] = submission
+        self.example_event['data']['submission']['new_key_2'] = submission
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
 
