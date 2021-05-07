@@ -243,7 +243,6 @@ class TestEvents(RuntimeEnabledTestCase):
         If the submission data is less than 1,
         no event should be recorded
         """
-        key = list(self.example_event['data']['submission'].keys())[0]
         self.example_event['data']['submission'] = {}
         SubmissionRecorder().send(self.example_event)
         self.assert_unsuccessful_event_parsing()
