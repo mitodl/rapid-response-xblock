@@ -49,4 +49,3 @@ fi
 
 set -e
 coverage xml
-codecov
