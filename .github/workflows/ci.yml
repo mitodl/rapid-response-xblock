@@ -25,3 +25,9 @@ jobs:
           git checkout mitodl/mitx/lilac
           cd ../devstack
           DEVSTACK_WORKSPACE=$PWD/.. docker-compose -f docker-compose.yml -f docker-compose-host.yml run -v $PWD/../rapid-response-xblock:/rapid-response-xblock lms /rapid-response-xblock/run_devstack_integration_tests.sh
+
+      - name: Upload coverage to CodeCov
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: true
