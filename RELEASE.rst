@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Version 0.4.0 (Released June 14, 2021)
+-------------
+
+- Added tests for logger.py (#105)
+
 Version 0.3.0 (Released May 03, 2021)
 -------------
 
