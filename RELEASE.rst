@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Version 0.5.0
+-------------
+
+- Using codecov in github actions (#106)
+
 Version 0.4.0 (Released June 14, 2021)
 -------------
 
