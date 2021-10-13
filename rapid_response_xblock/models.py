@@ -5,7 +5,7 @@ Rapid Response block models
 
 from django.conf import settings
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
+
 from jsonfield import JSONField
 from model_utils.models import TimeStampedModel
 from opaque_keys.edx.django.models import (
@@ -14,7 +14,6 @@ from opaque_keys.edx.django.models import (
 )
 
 
-@python_2_unicode_compatible
 class RapidResponseRun(models.Model):
     """
     Stores information for a group of RapidResponseSubmission objects
@@ -42,7 +41,6 @@ class RapidResponseRun(models.Model):
         )
 
 
-@python_2_unicode_compatible
 class RapidResponseSubmission(TimeStampedModel):
     """
     Stores the student submissions for a problem that is

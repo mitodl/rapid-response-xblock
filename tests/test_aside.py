@@ -2,7 +2,7 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 from ddt import data, ddt, unpack
-from mock import Mock, patch, PropertyMock
+from unittest.mock import Mock, patch, PropertyMock
 
 from dateutil.parser import parse as parse_datetime
 import pytz
@@ -68,7 +68,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         ) as has_open_run_mock:
             has_open_run_mock.return_value = is_open
             fragment = self.aside_instance.student_view_aside(Mock())
-        assert 'data-open="{}"'.format(is_open) in fragment.content
+        assert f'data-open="{is_open}"' in fragment.content
 
     @data(*[
         [BLOCK_PROBLEM_CATEGORY, {MULTIPLE_CHOICE_TYPE}, None, True],
@@ -98,7 +98,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
         """
         self.aside_instance.enabled = enabled_value
         fragment = self.aside_instance.studio_view_aside(Mock())
-        assert 'data-enabled="{}"'.format(enabled_value) in fragment.content
+        assert f'data-enabled="{enabled_value}"' in fragment.content
         assert fragment.js_init_fn == 'RapidResponseAsideStudioInit'
 
     def test_toggle_block_open(self):

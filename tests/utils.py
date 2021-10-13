@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import os
 import shutil
 import tempfile
-from mock import Mock, patch
+from unittest.mock import Mock, patch
 
 from django.http.request import HttpRequest
 
@@ -12,7 +12,7 @@ from lms.djangoapps.courseware.module_render import (
     get_module_system_for_user,
     make_track_function,
 )
-from lms.djangoapps.courseware.tests.factories import StaffFactory
+from common.djangoapps.student.tests.factories import StaffFactory
 from common.djangoapps.student.tests.factories import AdminFactory
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
