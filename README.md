@@ -76,6 +76,10 @@ If you're using any release before Juniper, make sure the following properties e
 If one doesn't already exist, create a record for the `XBlockAsidesConfig` model 
 (LMS admin URL: `/admin/lms_xblock/xblockasidesconfig/`).
 
+### 4) Rapid Response for Studio and XML
+[Studio Documentation](https://odl.zendesk.com/hc/en-us/articles/360007744011-Rapid-Response-for-Studio)
+[XML Documentation](https://odl.zendesk.com/hc/en-us/articles/360007744151-Rapid-Response-for-XML)
+
 ## Database Migrations
 
 If your `rapid-response-xblock` repo is mounted into the devstack container, you can create migrations for any
