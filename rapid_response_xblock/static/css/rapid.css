@@ -104,7 +104,8 @@ text.message {
 
 .problem-status-text,
 .problem-status-warning .warning-text {
-    margin-left: 20px;
+    margin-left: 10px;
+    font-size: 14px;
 }
 
 .selection-container {
