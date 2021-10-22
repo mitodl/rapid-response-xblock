@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Version 0.5.1
+-------------
+
+- fix: Open/Close button anchor & design regression in Learning MFE (#114)
+
 Version 0.5.0 (Released June 15, 2021)
 -------------
 
