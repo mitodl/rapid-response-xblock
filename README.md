@@ -16,17 +16,25 @@ In production, the current practice as of 01/2021 is to add this dependency via 
 
 For local development, you can use one of the following options to add this as a dependency in the `edx-platform` repo:
 
-1. **Run bash in a running LMS container and install directly via pip.**
+1. **Install directly via pip.**
 
     ```
     # From the devstack directory, run bash in a running LMS container...
     make dev.shell.lms
     
-    # In bash, install the package in the correct environment (based on provision-lms.sh script in devstack repo)...
-    docker-compose exec -T lms bash -c \
-        'source /edx/app/edxapp/edxapp_env && pip install rapid-response-xblock==<version>
+    # In bash, install the package
+    source /edx/app/edxapp/edxapp_env && pip install rapid-response-xblock==<version>
+
+    # Do the same for studio
+    make dev.shell.studio
+    
+    # In bash, install the package
+    source /edx/app/edxapp/edxapp_env && pip install rapid-response-xblock==<version>
     ``` 
-   You can also mount the repo into the LMS container and install the package via the repo path in the container.
+   
+   To install a version of rapid-response-xblock which is not on pypi, you can clone this repo into the two containers. Install the package by running `source /edx/app/edxapp/edxapp_env && python setup.py install` for LMS and Studio.
+
+
 1. **Add to one of the requirements files (`requirements/private.txt` et. al.), then re-provision with `make dev.provision.lms`.** This is very heavyweight
   as it will go through many extra provisioning steps, but it may be the most reliable way.
 1. **Use ODL Devstack Tools.** [odl_devstack_tools](https://github.com/mitodl/odl_devstack_tools) was created to 
@@ -88,8 +96,20 @@ _NOTE (4/2021)_: Rapid response is **only configured to work with multiple choic
 Follow these steps to enable an individual problem for rapid response:
 1. Load the problem in Studio
 2. Click "Edit"
-3. In the editing UI, click "Plugins" (if this option doesn't exist, rapid response may not be properly configured)
+3. In the editing dialog UI there should be Editor, Settings, and Plugins in the title bar. Click "Plugins". (If this option doesn't exist, rapid response may not be properly configured)
 4. Check the box ("Enable problem for rapid-response")
 5. Save and publish
 
 When you navigate to that problem in LMS, you should now see an option for opening the problem for rapid response.
+
+To test rapid response functionality:
+1. Login to your local edX instance as "staff"
+2. In Studio go to the edX Demo Course. Create a new unit which is a multiple choice problem.
+3. Edit the problem and turn on rapid response as described in the previous steps.
+4. Publish and click "View Live Version"
+5. Verify that the dropdown next to "View this course as" is "Staff". 
+6. Scroll down and you should see an empty graph containing a button labeled "Open problem now". Click on the button and it should show a timer that starts counting.
+7. Pick one of the answers and submit it. After a few seconds a bar should appear for the column for the answer.
+8. Pick another answer, and the bar should disappear and a new one should appear at the new answer.
+9. Click "Close problem now"
+10. Click the dropdown next to "View this course as" to switch to "Audit". You should see a multiple choice question with two incorrect answers and one correct answer according to the labels. You should **not** see the rapid response functionality beneath the problem.
