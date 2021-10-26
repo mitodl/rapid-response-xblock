@@ -1,5 +1,5 @@
 """Just here to verify tests are running"""
-import mock
+from unittest import mock
 import pytest
 
 from ddt import data, ddt, unpack
