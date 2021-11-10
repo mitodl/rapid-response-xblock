@@ -1,6 +1,13 @@
 Release Notes
 =============
 
+Version 0.5.1 (Released November 10, 2021)
+-------------
+
+- Update instructions (#117)
+- chore: add support for Django3.2 (#111)
+- fix: Open/Close button anchor & design regression in Learning MFE (#114)
+
 Version 0.5.0 (Released June 15, 2021)
 -------------
 
