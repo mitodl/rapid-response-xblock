@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 0.5.1
+Version 0.5.1 (Released November 10, 2021)
 -------------
 
 - Update instructions (#117)
