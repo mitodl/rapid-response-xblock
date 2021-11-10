@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 0.6.0
+Version 0.6.0 (Released November 10, 2021)
 -------------
 
 - Added studio and XML doc references (#113)
