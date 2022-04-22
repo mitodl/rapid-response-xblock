@@ -35,9 +35,9 @@ For local development, you can use one of the following options to add this as a
   If you set a few environment variables and create a docker compose file and config patch file, you can run devstack
   with your rapid response repo mounted and installed, and the necessary config changes (discussed below) applied. 
 3. **Clone inside LMS/CMS:** Both LMS/CMS containers have a shared directory `src` which can be used to clone and install this xBlock locally. You can use this method for local development as well.
-```
-pip install -e /edx/src/rapid-response-xblock
-```
+    ```
+    pip install -e /edx/src/rapid-response-xblock
+    ```
 
 ### 2) Update EdX config files 
 
