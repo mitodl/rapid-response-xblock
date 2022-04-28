@@ -8,17 +8,18 @@ from unittest.mock import Mock, patch
 from django.http.request import HttpRequest
 
 from xblock.fields import ScopeIds
+from xmodule.modulestore.django import modulestore
+from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, TEST_DATA_MONGO_AMNESTY_MODULESTORE
+from xmodule.modulestore.tests.factories import ItemFactory
+from xmodule.modulestore.xml_importer import import_course_from_xml
+from xmodule.x_module import XModule
+
 from lms.djangoapps.courseware.module_render import (
     get_module_system_for_user,
     make_track_function,
 )
 from common.djangoapps.student.tests.factories import StaffFactory
 from common.djangoapps.student.tests.factories import AdminFactory
-from xmodule.modulestore.django import modulestore
-from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
-from xmodule.modulestore.tests.factories import ItemFactory
-from xmodule.modulestore.xml_importer import import_course_from_xml
-from xmodule.x_module import XModule
 
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -63,6 +64,9 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
     Test class that sets up a course, instructor, runtime, and other
     commonly-needed objects for testing XBlocks
     """
+    # Using test data modulestore setting for course testing
+    MODULESTORE = TEST_DATA_MONGO_AMNESTY_MODULESTORE
+
     def setUp(self):
         super().setUp()
         self.track_function = make_track_function(HttpRequest())
@@ -86,7 +90,6 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
             descriptor=self.descriptor,
             course_id=self.course.id,
             track_function=self.track_function,
-            xqueue_callback_url_prefix=Mock(),
             request_token=Mock(),
             course=self.course,
             wrap_xmodule_display=False,

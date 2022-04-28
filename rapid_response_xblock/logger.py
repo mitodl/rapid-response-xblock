@@ -7,13 +7,12 @@ from collections import namedtuple
 from django.db import transaction
 from opaque_keys.edx.keys import UsageKey
 from opaque_keys.edx.locator import CourseLocator
-from common.djangoapps.track.backends import BaseBackend
-
 from rapid_response_xblock.models import (
     RapidResponseRun,
     RapidResponseSubmission,
 )
 from rapid_response_xblock.block import MULTIPLE_CHOICE_TYPE
+from common.djangoapps.track.backends import BaseBackend
 
 
 log = logging.getLogger(__name__)

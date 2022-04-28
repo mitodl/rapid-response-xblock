@@ -1,8 +1,8 @@
 """Tests for the rapid-response aside logic"""
 from collections import defaultdict
 from datetime import datetime, timedelta
-from ddt import data, ddt, unpack
 from unittest.mock import Mock, patch, PropertyMock
+from ddt import data, ddt, unpack
 
 from dateutil.parser import parse as parse_datetime
 import pytz
