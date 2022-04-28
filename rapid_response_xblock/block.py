@@ -7,7 +7,7 @@ import pkg_resources
 from django.db import transaction
 from django.db.models import Count
 from django.template import Context, Template
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 import pytz
 from web_fragments.fragment import Fragment
 from webob.response import Response
