@@ -9,7 +9,7 @@ In production, the current practice as of 01/2021 is to add this dependency via 
 
 For local development, you can use one of the following options to add this as a dependency in the `edx-platform` repo:
 
-1. **Install directly via pip.**
+- **Install directly via pip.**
 
     ```
     # From the devstack directory, run bash in a running LMS container...
@@ -28,13 +28,13 @@ For local development, you can use one of the following options to add this as a
    To install a version of rapid-response-xblock which is not on pypi, you can clone this repo into the two containers. Install the package by running `source /edx/app/edxapp/edxapp_env && python setup.py install` for LMS and Studio.
 
 
-1. **Add to one of the requirements files (`requirements/private.txt` et. al.), then re-provision with `make dev.provision.lms`.** This is very heavyweight
+- **Add to one of the requirements files (`requirements/private.txt` et. al.), then re-provision with `make dev.provision.lms`.** This is very heavyweight
   as it will go through many extra provisioning steps, but it may be the most reliable way.
-2. **Use ODL Devstack Tools.** [odl_devstack_tools](https://github.com/mitodl/odl_devstack_tools) was created to 
+- **Use ODL Devstack Tools.** [odl_devstack_tools](https://github.com/mitodl/odl_devstack_tools) was created to 
   alleviate some of the pain that can be experienced while running devstack with extra dependencies and config changes.
   If you set a few environment variables and create a docker compose file and config patch file, you can run devstack
   with your rapid response repo mounted and installed, and the necessary config changes (discussed below) applied. 
-3. **Clone inside LMS/CMS:** Both LMS/CMS containers have a shared directory `src` which can be used to clone and install this xBlock locally. You can use this method for local development as well.
+- **Clone inside LMS/CMS:** Both LMS/CMS containers have a shared directory `src` which can be used to clone and install this xBlock locally. You can use this method for local development as well.
     ```
     pip install -e /edx/src/rapid-response-xblock
     ```
