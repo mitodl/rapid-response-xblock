@@ -1,13 +1,6 @@
 # rapid-response-xblock
 A django app plugin for edx-platform
 
-__NOTE:__ We had to make several fixes to XBlock Asides in `edx-platform` in order to get rapid response working. 
-The `edx-platform` branch/tag you're using must include these commits for rapid response to work:
-
-- https://github.com/mitodl/edx-platform/commit/b26db017a55140bb7940c3fbfac5b4f27128bffd
-- https://github.com/mitodl/edx-platform/commit/96578f832d786d90162c555f1cfa08f69ba294d2
-- https://github.com/mitodl/edx-platform/commit/1bd36be3b31210faa8af09fc28ff4a885807e20e
-
 ## Setup
 
 ### 1) Add rapid response as a dependency
@@ -16,7 +9,7 @@ In production, the current practice as of 01/2021 is to add this dependency via 
 
 For local development, you can use one of the following options to add this as a dependency in the `edx-platform` repo:
 
-1. **Install directly via pip.**
+- **Install directly via pip.**
 
     ```
     # From the devstack directory, run bash in a running LMS container...
@@ -35,12 +28,16 @@ For local development, you can use one of the following options to add this as a
    To install a version of rapid-response-xblock which is not on pypi, you can clone this repo into the two containers. Install the package by running `source /edx/app/edxapp/edxapp_env && python setup.py install` for LMS and Studio.
 
 
-1. **Add to one of the requirements files (`requirements/private.txt` et. al.), then re-provision with `make dev.provision.lms`.** This is very heavyweight
+- **Add to one of the requirements files (`requirements/private.txt` et. al.), then re-provision with `make dev.provision.lms`.** This is very heavyweight
   as it will go through many extra provisioning steps, but it may be the most reliable way.
-1. **Use ODL Devstack Tools.** [odl_devstack_tools](https://github.com/mitodl/odl_devstack_tools) was created to 
+- **Use ODL Devstack Tools.** [odl_devstack_tools](https://github.com/mitodl/odl_devstack_tools) was created to 
   alleviate some of the pain that can be experienced while running devstack with extra dependencies and config changes.
   If you set a few environment variables and create a docker compose file and config patch file, you can run devstack
   with your rapid response repo mounted and installed, and the necessary config changes (discussed below) applied. 
+- **Clone inside LMS/CMS:** Both LMS/CMS containers have a shared directory `src` which can be used to clone and install this xBlock locally. You can use this method for local development as well.
+    ```
+    pip install -e /edx/src/rapid-response-xblock
+    ```
 
 ### 2) Update EdX config files 
 
@@ -117,3 +114,17 @@ To test rapid response functionality:
 8. Pick another answer, and the bar should disappear and a new one should appear at the new answer.
 9. Click "Close problem now"
 10. Click the dropdown next to "View this course as" to switch to "Audit". You should see a multiple choice question with two incorrect answers and one correct answer according to the labels. You should **not** see the rapid response functionality beneath the problem.
+
+
+## Rapid Response Reports
+
+All the results of the Rapid Response problems are also available in form of CSV reports as a separate plugin [ol-openedx-rapid-response-reports](https://github.com/mitodl/open-edx-plugins/tree/main/src/ol_openedx_rapid_response_reports). (_Installation instructions are on the given link_).
+
+**How/Where to check reports?**
+
+After you've installed [ol-openedx-rapid-response-reports](https://github.com/mitodl/open-edx-plugins/tree/main/src/ol_openedx_rapid_response_reports), visit `Rapid Responses` under the `Instructor Dashboard`. If you don't see `Rapid Responses` tab, please check that the plugins is installed properly.
+![Screenshot of Rapid Response reports](docs/rapid_response_reports.png)
+
+
+__NOTE:__ Rapid Response xBlock works independently and doesn't depend on `ol-openedx-rapid-response-reports`, there are no additional steps to be performed inside Rapid Response xBlock if you want to use the reports plugin.
+
