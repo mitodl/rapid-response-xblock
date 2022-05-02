@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 0.7.0
+Version 0.7.0 (Released May 02, 2022)
 -------------
 
 - Fixes: Page scrolls when closing rapid response problem (#123)
