@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 0.8.0
+Version 0.8.0 (Released May 02, 2022)
 -------------
 
 - docs: Update readme with reports plugin info (nutmeg) (#127)
