@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Version 0.9.0
+-------------
+
+- Add renovate config for managing dependency updates
+
 Version 0.8.0 (Released May 02, 2022)
 -------------
 
