@@ -26,7 +26,7 @@ setup(
     author="MITx",
     zip_safe=False,
     install_requires=[
-        'django>=2.2,<4.0',
+        'django>=4.1,<4.2',
         'XBlock',
         'xblock-utils',
         'edx-opaque-keys'
