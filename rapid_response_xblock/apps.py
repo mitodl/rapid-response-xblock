@@ -1,11 +1,7 @@
 """AppConfig for rapid response"""
 from django.apps import AppConfig
-from openedx.core.djangoapps.plugins.constants import (
-    ProjectType,
-    SettingsType,
-    PluginSettings,
-)
-
+from openedx.core.djangoapps.plugins.constants import ProjectType, SettingsType
+from edx_django_utils.plugins import PluginSettings, PluginURLs
 
 class RapidResponseAppConfig(AppConfig):
     """
@@ -20,5 +16,12 @@ class RapidResponseAppConfig(AppConfig):
                     PluginSettings.RELATIVE_PATH: 'settings'
                 },
             }
-        }
+        },
+        PluginURLs.CONFIG: {
+            ProjectType.CMS: {
+                PluginURLs.NAMESPACE: "",
+                PluginURLs.REGEX: "^toggle-rapid-response/",
+                PluginURLs.RELATIVE_PATH: "urls",
+            }
+        },
     }
