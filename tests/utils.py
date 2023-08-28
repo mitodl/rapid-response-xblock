@@ -10,16 +10,15 @@ from django.http.request import HttpRequest
 from xblock.fields import ScopeIds
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, TEST_DATA_MONGO_AMNESTY_MODULESTORE
-from xmodule.modulestore.tests.factories import ItemFactory
+from xmodule.modulestore.tests.factories import BlockFactory
 from xmodule.modulestore.xml_importer import import_course_from_xml
-from xmodule.x_module import XModule
+from xmodule.capa_block import ProblemBlock
 
-from lms.djangoapps.courseware.module_render import (
-    get_module_system_for_user,
+from lms.djangoapps.courseware.block_render import (
+    prepare_runtime_for_user,
     make_track_function,
 )
-from common.djangoapps.student.tests.factories import StaffFactory
-from common.djangoapps.student.tests.factories import AdminFactory
+from common.djangoapps.student.tests.factories import AdminFactory, StaffFactory
 
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -69,35 +68,32 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
 
     def setUp(self):
         super().setUp()
+
         self.track_function = make_track_function(HttpRequest())
         self.student_data = Mock()
         self.course = self.import_test_course()
-        self.descriptor = ItemFactory(category="pure", parent=self.course)
+        self.block = BlockFactory(category="pure", parent=self.course)
         self.course_id = self.course.id
         self.instructor = StaffFactory.create(course_key=self.course_id)
         self.runtime = self.make_runtime()
-        self.runtime.error_tracker = None
         self.staff = AdminFactory.create()
-        self.course.bind_for_student(self.runtime, self.instructor)
+        self.course.bind_for_student(self.instructor)
 
     def make_runtime(self, **kwargs):
         """
         Make a runtime
         """
-        runtime, _ = get_module_system_for_user(
+        prepare_runtime_for_user(
             user=self.instructor,
             student_data=self.student_data,
-            descriptor=self.descriptor,
+            runtime=self.block.runtime,
             course_id=self.course.id,
             track_function=self.track_function,
             request_token=Mock(),
             course=self.course,
-            wrap_xmodule_display=False,
             **kwargs
         )
-        runtime.get_policy = lambda _: {}
-
-        return runtime
+        return self.block.runtime
 
     def import_test_course(self):
         """
@@ -133,13 +129,12 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
         def wrap_runtime(*args, **kwargs):
             """Alter modulestore to set xmodule_runtime and xmodule_runtime.xmodule_instance"""
             block = store.get_item(*args, **kwargs)
-            block.xmodule_runtime = self.runtime
+            block.runtime = self.runtime
 
             # Copied this from xmodule.xmodule.x_module._xmodule
             # When it executes there it raises a scope error, but here it's fine. Not sure what the difference is
-            block.xmodule_runtime.xmodule_instance = block.xmodule_runtime.construct_xblock_from_class(
-                XModule,
-                descriptor=block,
+            block.xmodule_runtime.xmodule_instance = block.runtime.construct_xblock_from_class(
+                ProblemBlock,
                 scope_ids=block.scope_ids,
                 field_data=block._field_data,  # pylint: disable=protected-access
                 for_parent=block.get_parent()

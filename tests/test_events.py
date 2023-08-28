@@ -18,7 +18,7 @@ from rapid_response_xblock.models import (
 )
 from rapid_response_xblock.logger import SubmissionRecorder
 from xmodule.modulestore.django import modulestore
-from lms.djangoapps.courseware.module_render import load_single_xblock
+from lms.djangoapps.courseware.block_render import load_single_xblock
 
 
 # pylint: disable=no-member
@@ -29,8 +29,7 @@ class TestEvents(RuntimeEnabledTestCase):
 
     def setUp(self):
         super().setUp()
-        self.scope_ids = make_scope_ids(self.runtime, self.descriptor)
-
+        self.scope_ids = make_scope_ids(self.runtime, self.block)
         # For the test_data course
         self.test_data_status = RapidResponseRun.objects.create(
             problem_usage_key=UsageKey.from_string(
@@ -62,7 +61,7 @@ class TestEvents(RuntimeEnabledTestCase):
             item for item in store.get_items(course.course_id)
             if item.__class__.__name__ == 'ProblemBlockWithMixins'
         ][0]
-        problem.bind_for_student(self.runtime, self.instructor)
+        problem.bind_for_student(self.instructor)
 
         # Workaround handle_ajax binding strangeness
         request = HttpRequest()
@@ -72,7 +71,8 @@ class TestEvents(RuntimeEnabledTestCase):
             request=request,
             course_id=str(self.course_id),
             user_id=self.instructor.id,
-            usage_key_string=str(problem.location)
+            usage_key_string=str(problem.location),
+            will_recheck_access=True
         )
 
     def test_publish(self):
@@ -116,6 +116,7 @@ class TestEvents(RuntimeEnabledTestCase):
         A problem should trigger an event which is captured
         """
         problem = self.get_problem()
+
         problem.handle_ajax('problem_check', {
             "input_i4x-SGAU-SGA101-problem-"
             "2582bbb68672426297e525b49a383eb8_2_1": clicked_answer_id
@@ -135,7 +136,6 @@ class TestEvents(RuntimeEnabledTestCase):
         Only the last submission should get captured
         """
         problem = self.get_problem()
-
         for answer in ('choice_0', 'choice_1', 'choice_2'):
             problem.handle_ajax('problem_check', {
                 "input_i4x-SGAU-SGA101-problem-"
