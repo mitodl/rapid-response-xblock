@@ -6,7 +6,9 @@ source /edx/app/edxapp/venvs/edxapp/bin/activate
 cd /edx/app/edxapp/edx-platform
 mkdir -p reports
 
-sudo /edx/app/edxapp/venvs/edxapp/bin/pip install -r ./requirements/edx/testing.txt
+pip install -r ./requirements/edx/testing.txt
+
+pip install -e .
 
 cd /rapid-response-xblock
 pip install -e .
