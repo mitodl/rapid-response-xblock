@@ -115,6 +115,21 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             assert f'data-enabled="{enabled_value}"' in fragment.content
             assert fragment.js_init_fn == 'RapidResponseAsideStudioInit'
 
+    @data(True, False)
+    def test_author_view(self, enabled_value):
+        """
+        Test that the aside author view returns a fragment when enabled
+        """
+        self.aside_instance.enabled = enabled_value
+        with patch(
+            'rapid_response_xblock.block.RapidResponseAside.enabled',
+            new=enabled_value,
+        ):
+
+            fragment = self.aside_instance.author_view_aside(Mock())
+            assert f'data-enabled="{enabled_value}"' in fragment.content
+            assert fragment.js_init_fn == 'RapidResponseAsideStudioInit'
+
     def test_toggle_block_open(self):
         """Test that toggle_block_open_status changes the status of a rapid response block"""
         usage_key = self.aside_instance.wrapped_block_usage_key

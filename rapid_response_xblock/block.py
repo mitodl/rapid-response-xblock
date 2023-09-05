@@ -99,6 +99,23 @@ class RapidResponseAside(XBlockAside):
         fragment.initialize_js("RapidResponseAsideInit")
         return fragment
 
+    @XBlockAside.aside_for('author_view')
+    def author_view_aside(self, block, context=None):  # pylint: disable=unused-argument
+        """
+        Renders the aside contents for the author view
+        """
+        fragment = Fragment('')
+        fragment.add_content(
+            render_template(
+                "static/html/rapid_studio.html",
+                {'is_enabled': self.enabled}
+            )
+        )
+        fragment.add_css(get_resource_bytes("static/css/rapid.css"))
+        fragment.add_javascript(get_resource_bytes("static/js/src/rapid_studio.js"))
+        fragment.initialize_js("RapidResponseAsideStudioInit")
+        return fragment
+
     @XBlockAside.aside_for('studio_view')
     def studio_view_aside(self, block, context=None):  # pylint: disable=unused-argument
         """
