@@ -104,34 +104,14 @@ class RapidResponseAside(XBlockAside):
         """
         Renders the aside contents for the author view
         """
-        fragment = Fragment('')
-        fragment.add_content(
-            render_template(
-                "static/html/rapid_studio.html",
-                {'is_enabled': self.enabled}
-            )
-        )
-        fragment.add_css(get_resource_bytes("static/css/rapid.css"))
-        fragment.add_javascript(get_resource_bytes("static/js/src/rapid_studio.js"))
-        fragment.initialize_js("RapidResponseAsideStudioInit")
-        return fragment
+        return self.get_studio_fragment()
 
     @XBlockAside.aside_for('studio_view')
     def studio_view_aside(self, block, context=None):  # pylint: disable=unused-argument
         """
         Renders the aside contents for the studio view
         """
-        fragment = Fragment('')
-        fragment.add_content(
-            render_template(
-                "static/html/rapid_studio.html",
-                {'is_enabled': self.enabled}
-            )
-        )
-        fragment.add_css(get_resource_bytes("static/css/rapid.css"))
-        fragment.add_javascript(get_resource_bytes("static/js/src/rapid_studio.js"))
-        fragment.initialize_js("RapidResponseAsideStudioInit")
-        return fragment
+        return self.get_studio_fragment()
 
     @XBlock.handler
     @staff_only
@@ -224,6 +204,22 @@ class RapidResponseAside(XBlockAside):
         # We only want this aside to apply to the block if the problem is multiple choice
         # AND there are not multiple problem types.
         return block_problem_types == {MULTIPLE_CHOICE_TYPE}
+
+    def get_studio_fragment(self):
+        """
+        Generate a Studio view based aside fragment. (Used in Studio View and Author View)
+        """
+        fragment = Fragment('')
+        fragment.add_content(
+            render_template(
+                "static/html/rapid_studio.html",
+                {'is_enabled': self.enabled}
+            )
+        )
+        fragment.add_css(get_resource_bytes("static/css/rapid.css"))
+        fragment.add_javascript(get_resource_bytes("static/js/src/rapid_studio.js"))
+        fragment.initialize_js("RapidResponseAsideStudioInit")
+        return fragment
 
     @property
     def wrapped_block_usage_key(self):

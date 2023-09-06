@@ -3,6 +3,7 @@ from django.apps import AppConfig
 from openedx.core.djangoapps.plugins.constants import ProjectType, SettingsType
 from edx_django_utils.plugins import PluginSettings, PluginURLs
 
+
 class RapidResponseAppConfig(AppConfig):
     """
     AppConfig for rapid response
