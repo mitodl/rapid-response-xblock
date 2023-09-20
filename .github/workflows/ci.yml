@@ -19,6 +19,9 @@ jobs:
           cd devstack
           sed -i 's/:cached//g' ./docker-compose-host.yml
           make dev.clone.https
+          cd ../edx-platform
+          git checkout open-release/palm.master
+          cd ../devstack
           DEVSTACK_WORKSPACE=$PWD/.. docker-compose -f docker-compose.yml -f docker-compose-host.yml run -v $PWD/../rapid-response-xblock:/rapid-response-xblock lms /rapid-response-xblock/run_devstack_integration_tests.sh
 
       - name: Upload coverage to CodeCov
