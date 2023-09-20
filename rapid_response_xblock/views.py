@@ -47,5 +47,6 @@ def toggle_rapid_response(request):
 
     handler_block.enabled = not handler_block.enabled
     modulestore().update_item(block, request.user.id, asides=[handler_block])
+    modulestore().publish(block.location, request.user.id)
 
     return JsonResponse({"is_enabled": handler_block.enabled})
