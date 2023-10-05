@@ -2,7 +2,12 @@
   'use strict';
 
   function RapidResponseAsideStudioView(runtime, element) {
-    var toggleEnabledUrl = runtime.handlerUrl(element, 'toggle_block_enabled');
+    var toggleEnabledUrl = runtime.handlerUrl(element, '');
+    // Redirect this call to our own API instead of xBlock handler because the handler callbacks are not supported
+    // for the studio preview. The calls can have two formats 1) "preview/xblock" when called from studio preview
+    // 2) "/xblock" when called from Studio plugin(Tab) settings.
+    toggleEnabledUrl = toggleEnabledUrl.replace("preview/xblock", "toggle-rapid-response")
+    toggleEnabledUrl = toggleEnabledUrl.replace("/xblock", "/toggle-rapid-response")
     var $element = $(element);
 
     var rapidTopLevelSel = '.rapid-response-block';
