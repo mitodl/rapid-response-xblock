@@ -9,7 +9,7 @@ from django.http.request import HttpRequest
 
 from xblock.fields import ScopeIds
 from xmodule.modulestore.django import modulestore
-from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, TEST_DATA_MONGO_AMNESTY_MODULESTORE
+from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, TEST_DATA_MONGO_AMNESTY_MODULESTORE, SharedModuleStoreTestCase, TEST_DATA_SPLIT_MODULESTORE
 from xmodule.modulestore.tests.factories import BlockFactory
 from xmodule.modulestore.xml_importer import import_course_from_xml
 from xmodule.capa_block import ProblemBlock
@@ -58,25 +58,26 @@ def combine_dicts(dictionary, extras):
     return ret
 
 
-class RuntimeEnabledTestCase(ModuleStoreTestCase):
+class RuntimeEnabledTestCase(SharedModuleStoreTestCase):
     """
     Test class that sets up a course, instructor, runtime, and other
     commonly-needed objects for testing XBlocks
     """
     # Using test data modulestore setting for course testing
-    MODULESTORE = TEST_DATA_MONGO_AMNESTY_MODULESTORE
+    # MODULESTORE = TEST_DATA_MONGO_AMNESTY_MODULESTORE
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
         super().setUp()
 
         self.track_function = make_track_function(HttpRequest())
         self.student_data = Mock()
+        self.staff = AdminFactory.create()
         self.course = self.import_test_course()
         self.block = BlockFactory(category="pure", parent=self.course)
         self.course_id = self.course.id
         self.instructor = StaffFactory.create(course_key=self.course_id)
         self.runtime = self.make_runtime()
-        self.staff = AdminFactory.create()
         self.course.bind_for_student(self.instructor)
 
     def make_runtime(self, **kwargs):
@@ -112,8 +113,9 @@ class RuntimeEnabledTestCase(ModuleStoreTestCase):
         store = modulestore()
         courses = import_course_from_xml(
             store,
-            'sga_user',
+            self.staff.id,
             xml_dir,
+            create_if_not_present=True,
         )
         return courses[0]
 
