@@ -68,10 +68,24 @@ If you're using any release before Juniper, make sure the following properties e
 
 `ADDL_INSTALLED_APPS` may include other items. The list just needs to have `rapid_response_xblock` among its values.
 
+#### Feature flags
+
+There is a feature flag to enable toggling the rapid response functionality for a problem through course outline in CMS. Enable `ENABLE_RAPID_RESPONSE_AUTHOR_VIEW` in your CMS config either through `/edx/app/edxapp/cms.env.json` or `private.py`.
+
+```yaml
+- ENABLE_RAPID_RESPONSE_AUTHOR_VIEW: true or false
+```
+
+
+__NOTE:__Once this flag is enabled and you toggle the rapid response from course outline, It will auto publish the problem if it was not in draft.
+
 ### 3) Add database record
 
 If one doesn't already exist, create a record for the `XBlockAsidesConfig` model 
 (LMS admin URL: `/admin/lms_xblock/xblockasidesconfig/`).
+
+If you have enabled `ENABLE_RAPID_RESPONSE_AUTHOR_VIEW` you will also need to create a record in the `StudioConfig` model 
+(CMS admin URL: `/admin/xblock_config/studioconfig/`).
 
 ### 4) Rapid Response for Studio and XML
 [Studio Documentation](https://odl.zendesk.com/hc/en-us/articles/360007744011-Rapid-Response-for-Studio)

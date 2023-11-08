@@ -1,5 +1,6 @@
 """Views for Rapid Response xBlock"""
 
+import logging
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from opaque_keys.edx.keys import UsageKey
@@ -7,6 +8,9 @@ from openedx.core.lib.xblock_utils import get_aside_from_xblock
 from xmodule.modulestore.django import modulestore
 
 from django.http import JsonResponse
+
+
+log = logging.getLogger(__name__)
 
 
 @login_required
@@ -46,7 +50,13 @@ def toggle_rapid_response(request):
     handler_block = get_aside_from_xblock(block, usage_key.aside_type)
 
     handler_block.enabled = not handler_block.enabled
-    modulestore().update_item(block, request.user.id, asides=[handler_block])
-    modulestore().publish(block.location, request.user.id)
+    try:
+        modulestore().update_item(block, request.user.id, asides=[handler_block])
+        modulestore().publish(block.location, request.user.id)
+    except Exception as ex:  # pylint: disable=broad-except
+        # Updating and publishing item might throw errors when the initial state of a block is draft (Unpublished).
+        # Let them flow silently
+        log.exception("Something went wrong with updating/publishing rapid response block."
+                      " Most likely the block is in draft %s", ex)
 
     return JsonResponse({"is_enabled": handler_block.enabled})
