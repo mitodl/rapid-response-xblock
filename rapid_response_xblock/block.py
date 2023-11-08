@@ -4,6 +4,7 @@ import logging
 from functools import wraps
 import pkg_resources
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Count
 from django.template import Context, Template
@@ -104,7 +105,9 @@ class RapidResponseAside(XBlockAside):
         """
         Renders the aside contents for the author view
         """
-        return self.get_studio_fragment()
+        if settings.ENABLE_RAPID_RESPONSE_AUTHOR_VIEW:
+            return self.get_studio_fragment()
+        return Fragment('')
 
     @XBlockAside.aside_for('studio_view')
     def studio_view_aside(self, block, context=None):  # pylint: disable=unused-argument
