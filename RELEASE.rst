@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 0.9.0
+Version 0.9.0 (Released November 08, 2023)
 -------------
 
 - fix: django 4.x support and feat flag for author view (#145)
