@@ -1,6 +1,13 @@
 Release Notes
 =============
 
+Version 0.9.0
+-------------
+
+- fix: django 4.x support and feat flag for author view (#145)
+- feat: add rapid response config setting in author view (#138)
+- refactor: fix the integrtion tests (#139)
+
 Version 0.8.1 (Released November 03, 2022)
 -------------
 
