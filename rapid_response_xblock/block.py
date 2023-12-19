@@ -263,7 +263,7 @@ class RapidResponseAside(XBlockAside):
         return [
             {
                 'answer_id': choice.get('name'),
-                'answer_text': list(choice.itertext())[0]}
+                'answer_text': list(choice.itertext())[0] if list(choice.itertext()) else ""}
              for choice in choice_elements
         ]
 
