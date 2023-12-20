@@ -1,6 +1,15 @@
 Release Notes
 =============
 
+Version 0.9.1
+-------------
+
+- fix: unable to open problem for responses
+- fixed the stuck on loading bug for problems create through course authoring MFE
+- chore(deps): update actions/checkout action to v4
+- chore(deps): update codecov/codecov-action action to v3
+- chore(deps): update actions/setup-python action to v4
+
 Version 0.9.0 (Released November 08, 2023)
 -------------
 
