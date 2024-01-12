@@ -34,7 +34,7 @@ class RapidResponseAsideTests(RuntimeEnabledTestCase):
             "aside-usage-v2:block-v1$:SGAU+SGA101+2017_SGA+type@problem+block"
             "@2582bbb68672426297e525b49a383eb8::rapid_response_xblock"
         )
-        self.scope_ids = make_scope_ids(self.runtime, self.aside_usage_key)
+        self.scope_ids = make_scope_ids(self.aside_usage_key)
         self.aside_instance = RapidResponseAside(
             scope_ids=self.scope_ids,
             runtime=self.runtime

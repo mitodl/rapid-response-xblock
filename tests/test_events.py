@@ -29,14 +29,14 @@ class TestEvents(RuntimeEnabledTestCase):
 
     def setUp(self):
         super().setUp()
-        self.scope_ids = make_scope_ids(self.runtime, self.block)
+        self.scope_ids = make_scope_ids(self.block)
         # For the test_data course
         self.test_data_status = RapidResponseRun.objects.create(
             problem_usage_key=UsageKey.from_string(
-                "i4x://SGAU/SGA101/problem/2582bbb68672426297e525b49a383eb8"
+                "block-v1:SGAU+SGA101+2017_SGA+type@problem+block@2582bbb68672426297e525b49a383eb8"
             ),
             course_key=CourseLocator.from_string(
-                'SGAU/SGA101/2017_SGA'
+                'course-v1:SGAU+SGA101+2017_SGA'
             ),
             open=True,
         )
@@ -99,7 +99,7 @@ class TestEvents(RuntimeEnabledTestCase):
         assert event['name'] == 'event_name'
         assert event['context']['event_source'] == 'server'
         assert event['data'] == event_object
-        assert event['context']['course_id'] == "{org}/{course}/{run}".format(
+        assert event['context']['course_id'] == "course-v1:{org}+{course}+{run}".format(
             org=block.location.org,
             course=block.location.course,
             run=block.location.run,
@@ -118,8 +118,7 @@ class TestEvents(RuntimeEnabledTestCase):
         problem = self.get_problem()
 
         problem.handle_ajax('problem_check', {
-            "input_i4x-SGAU-SGA101-problem-"
-            "2582bbb68672426297e525b49a383eb8_2_1": clicked_answer_id
+            "input_2582bbb68672426297e525b49a383eb8_2_1": clicked_answer_id
         })
         assert RapidResponseSubmission.objects.count() == 1
         obj = RapidResponseSubmission.objects.first()
@@ -138,8 +137,7 @@ class TestEvents(RuntimeEnabledTestCase):
         problem = self.get_problem()
         for answer in ('choice_0', 'choice_1', 'choice_2'):
             problem.handle_ajax('problem_check', {
-                "input_i4x-SGAU-SGA101-problem-"
-                "2582bbb68672426297e525b49a383eb8_2_1": answer
+                "input_2582bbb68672426297e525b49a383eb8_2_1": answer
             })
 
         assert RapidResponseSubmission.objects.count() == 1

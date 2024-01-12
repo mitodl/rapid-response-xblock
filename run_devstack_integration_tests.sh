@@ -10,7 +10,7 @@ pip install -r ./requirements/edx/testing.txt
 
 pip install -e .
 
-cd /rapid-response-xblock
+cd /edx/src/rapid-response-xblock
 pip install -e .
 
 # Install codecov so we can upload code coverage results
@@ -30,7 +30,7 @@ pytest tests --cov .
 PYTEST_SUCCESS=$?
 pycodestyle rapid_response_xblock tests
 PYCODESTYLE_SUCCESS=$?
-(cd /edx/app/edxapp/edx-platform; pylint /rapid-response-xblock/rapid_response_xblock /rapid-response-xblock/tests)
+(cd /edx/app/edxapp/edx-platform; pylint /edx/src/rapid-response-xblock/rapid_response_xblock /edx/src/rapid-response-xblock/tests)
 PYLINT_SUCCESS=$?
 
 if [[ $PYTEST_SUCCESS -ne 0 ]]
