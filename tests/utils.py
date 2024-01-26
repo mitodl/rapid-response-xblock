@@ -19,7 +19,8 @@ from lms.djangoapps.courseware.block_render import (
     make_track_function,
 )
 from common.djangoapps.student.tests.factories import AdminFactory, StaffFactory
-
+from xblock.runtime import DictKeyValueStore, KvsFieldData
+from xblock.test.tools import TestRuntime
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -36,8 +37,10 @@ def make_scope_ids(usage_key):
         xblock.fields.ScopeIds: A ScopeIds object for the block for usage_key
     """
     block_type = 'fake'
+    runtime = TestRuntime(services={'field-data': KvsFieldData(kvs=DictKeyValueStore())})
+    def_id = runtime.id_generator.create_definition(block_type)
     return ScopeIds(
-        'user', block_type, "definition_id", usage_key
+        'user', block_type, def_id, usage_key
     )
 
 
