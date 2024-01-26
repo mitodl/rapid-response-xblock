@@ -8,6 +8,8 @@ from unittest.mock import Mock, patch
 from django.http.request import HttpRequest
 
 from xblock.fields import ScopeIds
+from xblock.runtime import DictKeyValueStore, KvsFieldData
+from xblock.test.tools import TestRuntime
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import BlockFactory
@@ -19,8 +21,6 @@ from lms.djangoapps.courseware.block_render import (
     make_track_function,
 )
 from common.djangoapps.student.tests.factories import AdminFactory, StaffFactory
-from xblock.runtime import DictKeyValueStore, KvsFieldData
-from xblock.test.tools import TestRuntime
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
