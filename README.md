@@ -1,3 +1,7 @@
+## ⛔️ DEPRECATION WARNING
+
+### **This repository is deprecated. Please see [open-edx-plugins/src/rapid_response_xblock](https://github.com/mitodl/open-edx-plugins/tree/main/src/rapid_response_xblock) for all future updates and development.**
+
 # rapid-response-xblock
 A django app plugin for edx-platform
 
